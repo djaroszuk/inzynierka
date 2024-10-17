@@ -1,0 +1,13 @@
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.10.0  # Replace with the latest Black version
+    hooks:
+      - id: black
+        language_version: python3  # Adjust based on your Python version
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.1  # Replace with the latest Flake8 version
+    hooks:
+      - id: flake8
+        additional_dependencies: []  # Add Flake8 plugins here if needed

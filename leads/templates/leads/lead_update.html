@@ -1,0 +1,8 @@
+<!-- update_lead.html -->
+<h1>Edit Lead</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Update</button>
+</form>
+<a href="{% url 'leads:lead_list' %}">Back to list</a>

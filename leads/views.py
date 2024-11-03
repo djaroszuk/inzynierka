@@ -10,13 +10,13 @@ class LeadCreateView(generic.CreateView):
     form_class = LeadForm
     template_name = "leads/lead_create.html"
     success_url = reverse_lazy(
-        "leads:lead_list"
+        "leads:lead-list"
     )  # Po utworzeniu przekierowuje do listy leadów
 
 
 class LeadListView(generic.ListView):
     model = Lead
-    template_name = "leads/lead_list.html"
+    template_name = "leads/lead-list.html"
     context_object_name = "leads"  # domyślna nazwa dla kontekstu
 
 
@@ -31,7 +31,7 @@ class LeadUpdateView(generic.UpdateView):
     form_class = LeadForm
     template_name = "leads/lead_update.html"
     success_url = reverse_lazy(
-        "leads:lead_list"
+        "leads:lead-list"
     )  # Po aktualizacji przekierowuje do listy leadów
 
 
@@ -39,5 +39,5 @@ class LeadDeleteView(generic.DeleteView):
     model = Lead
     template_name = "leads/lead_delete.html"
     success_url = reverse_lazy(
-        "leads:lead_list"
+        "leads:lead-list"
     )  # Po usunięciu przekierowuje do listy leadów

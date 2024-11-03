@@ -10,9 +10,9 @@ from .views import (
 app_name = "leads"
 
 urlpatterns = [
-    path("", LeadListView.as_view(), name="lead_list"),
-    path("lead/<int:pk>/", LeadDetailView.as_view(), name="lead_detail"),
-    path("lead/new/", LeadCreateView.as_view(), name="create_lead"),
-    path("lead/<int:pk>/edit/", LeadUpdateView.as_view(), name="update_lead"),
-    path("lead/<int:pk>/delete/", LeadDeleteView.as_view(), name="delete_lead"),
+    path("", LeadListView.as_view(), name="lead-list"),
+    path("<int:pk>/", LeadDetailView.as_view(), name="lead-detail"),
+    path("new/", LeadCreateView.as_view(), name="lead-create"),
+    path("<int:pk>/edit/", LeadUpdateView.as_view(), name="lead-update"),
+    path("<int:pk>/delete/", LeadDeleteView.as_view(), name="lead-delete"),
 ]

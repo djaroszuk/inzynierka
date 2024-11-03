@@ -1,6 +1,6 @@
 <!-- lead_detail.html -->
 <h1>{{ lead.first_name }} {{ lead.last_name }}</h1>
 <p>Age: {{ lead.age }}</p>
-<a href="{% url 'leads:update_lead' lead.pk %}">Edit</a> |
-<a href="{% url 'leads:delete_lead' lead.pk %}">Delete</a> |
-<a href="{% url 'leads:lead_list' %}">Back to list</a>
+<a href="{% url 'leads:lead-delete' lead.pk %}">Edit</a> |
+<a href="{% url 'leads:lead-delete' lead.pk %}">Delete</a> |
+<a href="{% url 'leads:lead-list' %}">Back to list</a>

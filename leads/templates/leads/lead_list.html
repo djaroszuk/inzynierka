@@ -1,12 +1,12 @@
 <!-- lead_list.html -->
 <h1>Leads List</h1>
-<a href="{% url 'leads:create_lead' %}">Add new lead</a>
+<a href="{% url 'leads:lead-create' %}">Add new lead</a>
 <ul>
     {% for lead in leads %}
         <li>
-            <a href="{% url 'leads:lead_detail' lead.pk %}">{{ lead.first_name }} {{ lead.last_name }}</a>
-            (<a href="{% url 'leads:update_lead' lead.pk %}">Edit</a> |
-            <a href="{% url 'leads:delete_lead' lead.pk %}">Delete</a>)
+            <a href="{% url 'leads:lead-detail' lead.pk %}">{{ lead.first_name }} {{ lead.last_name }}</a>
+            (<a href="{% url 'leads:lead-update' lead.pk %}">Edit</a> |
+            <a href="{% url 'leads:lead-delete' lead.pk %}">Delete</a>)
         </li>
     {% endfor %}
 </ul>

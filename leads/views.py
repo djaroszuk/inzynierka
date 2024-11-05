@@ -3,6 +3,7 @@ from django.urls import reverse_lazy
 from django.views import generic
 from .models import Lead
 from .forms import LeadForm
+from django.shortcuts import render
 
 
 class LeadCreateView(generic.CreateView):
@@ -41,3 +42,11 @@ class LeadDeleteView(generic.DeleteView):
     success_url = reverse_lazy(
         "leads:lead-list"
     )  # Po usunięciu przekierowuje do listy leadów
+
+
+class LandingPageView(generic.TemplateView):
+    template_name = "landing.html"
+
+
+def landing_page(request):
+    return render(request, "landing.html")

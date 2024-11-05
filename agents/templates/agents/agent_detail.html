@@ -1,0 +1,12 @@
+<!-- lead_detail.html -->
+{% extends "base.html" %}
+{% block content %}
+<div class="bg-blue-500 text-white p-4">
+    <h1 class="text-3xl font-bold">Witamy w naszym projekcie Django!</h1>
+</div>
+<h1>{{ agent.user.username }} </h1>
+<p>Age:</p>
+<a href="{% url 'agents:agent-update' agent.pk %}">Edit</a> |
+<a href="{% url 'agents:agent-delete' agent.pk %}">Delete</a> |
+<a href="{% url 'agents:agent-list' %}">Back to list</a>
+{% endblock content %}

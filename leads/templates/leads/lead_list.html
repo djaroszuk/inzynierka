@@ -1,12 +1,19 @@
-<!-- lead_list.html -->
-<h1>Leads List</h1>
-<a href="{% url 'leads:lead-create' %}">Add new lead</a>
-<ul>
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="text-3xl font-bold text-blue-500">Leads List</h1>
+<a href="{% url 'leads:lead-create' %}" class="text-blue-600 underline">Add new lead</a>
+<ul class="list-disc ml-5 mt-4">
     {% for lead in leads %}
-        <li>
-            <a href="{% url 'leads:lead-detail' lead.pk %}">{{ lead.first_name }} {{ lead.last_name }}</a>
-            (<a href="{% url 'leads:lead-update' lead.pk %}">Edit</a> |
-            <a href="{% url 'leads:lead-delete' lead.pk %}">Delete</a>)
+        <li class="mt-2">
+            <a href="{% url 'leads:lead-detail' lead.pk %}" class="text-blue-500 hover:underline">
+                {{ lead.first_name }} {{ lead.last_name }}
+            </a>
+            (<a href="{% url 'leads:lead-update' lead.pk %}" class="text-green-500 hover:underline">Edit</a> |
+            <a href="{% url 'leads:lead-delete' lead.pk %}" class="text-red-500 hover:underline">Delete</a>)
         </li>
+    {% empty %}
+        <li>No leads available.</li>
     {% endfor %}
 </ul>
+{% endblock %}

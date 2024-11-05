@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="text-3xl font-bold text-blue-500">Agent List</h1>
+<a href="{% url 'agents:agent-create' %}" class="text-blue-600 underline">Add new agent</a>
+<ul class="list-disc ml-5 mt-4">
+    {% for agent in agents %}
+        <li class="mt-2">
+            <a href="{% url 'agents:agent-detail' agent.pk %}" class="text-blue-500 hover:underline">{{ agent.user.username }}</a>
+            (<a href="{% url 'agents:agent-update' agent.pk %}" class="text-green-500 hover:underline">Edit</a> |
+            <a href="{% url 'agents:agent-delete' agent.pk %}" class="text-red-500 hover:underline">Delete</a>)
+        </li>
+    {% empty %}
+        <li>No agents available.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

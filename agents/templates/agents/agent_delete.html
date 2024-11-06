@@ -1,9 +1,13 @@
-<a href="{% url 'agents:agent-list'%}">Go back to leads</a>
-<h1>
-    Are you sure you want to delete agent?
-</h1>
-<form method="post">
-    {% csrf_token %}
-    {{form}}
-    <button type="submit">submit</button>
-</form>
+{% extends "base.html" %}
+
+{% block content %}
+    <a href="{% url 'agents:agent-list'%}">Go back to leads</a>
+    <h1>
+        Are you sure you want to delete agent?
+    </h1>
+    <form method="post">
+        {% csrf_token %}
+        {{form}}
+        <button type="submit">submit</button>
+    </form>
+{% endblock content %}

@@ -1,8 +1,13 @@
-<!-- delete_lead.html -->
-<h1>Are you sure you want to delete this lead?</h1>
-<p>{{ lead.first_name }} {{ lead.last_name }}</p>
-<form method="post">
-    {% csrf_token %}
-    <button type="submit">Yes, delete</button>
-</form>
-<a href="{% url 'leads:lead-list' %}">Cancel</a>
+{% extends "base.html" %}
+
+{% block content %}
+    <a href="{% url 'leads:lead-list'%}">Go back to leads</a>
+    <h1>
+        Are you sure you want to delete lead?
+    </h1>
+    <form method="post">
+        {% csrf_token %}
+        {{form}}
+        <button type="submit">submit</button>
+    </form>
+{% endblock content %}

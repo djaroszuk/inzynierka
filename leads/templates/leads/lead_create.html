@@ -1,8 +1,13 @@
-<!-- lead_create.html -->
-<h1>Add New Lead</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Save</button>
-</form>
-<a href="{% url 'leads:lead-list' %}">Back to list</a>
+{% extends "base.html" %}
+
+{% block content %}
+    <a href="{% url 'leads:lead-list'%}">Go back to leads</a>
+    <h1>
+        Create a new lead
+    </h1>
+    <form method="post">
+        {% csrf_token %}
+        {{form}}
+        <button type="submit">submit</button>
+    </form>
+{% endblock content %}

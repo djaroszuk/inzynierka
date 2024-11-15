@@ -14,6 +14,8 @@ class LeadForm(forms.ModelForm):
             "last_name",
             "age",
             "agent",
+            "email",
+            "phone_number",
         )
 
 
@@ -37,4 +39,4 @@ class AssignAgentForm(forms.Form):
 class LeadCategoryUpdateForm(forms.ModelForm):
     class Meta:
         model = Lead
-        fields = ("category",)
+        fields = ("category", "is_converted")

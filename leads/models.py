@@ -22,6 +22,8 @@ class Lead(models.Model):
     first_name = models.CharField(max_length=20)
     last_name = models.CharField(max_length=20)
     age = models.IntegerField(default=0)
+    email = models.EmailField(unique=True, blank=True, null=True)
+    phone_number = models.CharField(max_length=9, blank=True, null=True)
     organisation = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     agent = models.ForeignKey("Agent", null=True, blank=True, on_delete=models.SET_NULL)
     category = models.ForeignKey(
@@ -32,6 +34,14 @@ class Lead(models.Model):
         on_delete=models.SET_NULL,
     )
     is_converted = models.BooleanField(default=False)
+    date_created = models.DateTimeField(auto_now_add=True)
+    client = models.OneToOneField(
+        "clients.Client",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="lead",
+    )
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -63,13 +73,22 @@ post_save.connect(post_user_created_signal, sender=User)
 
 
 @receiver(post_save, sender=Lead)
-def create_client_from_lead(sender, instance, **kwargs):
-    if instance.is_converted and not hasattr(instance, "client"):
-        Client.objects.create(
-            lead=instance,
+def create_client_from_lead(sender, instance, created, **kwargs):
+    """
+    Signal to create a Client instance when a Lead is converted.
+    """
+    # Check if the lead is converted and does not already have an associated client
+    if instance.is_converted and not instance.client:
+        # Create and associate a Client instance with the Lead
+        client = Client.objects.create(
             first_name=instance.first_name,
             last_name=instance.last_name,
             age=instance.age,
+            email=instance.email,
+            phone_number=instance.phone_number,
             organisation=instance.organisation,
             agent=instance.agent,
         )
+        # Associate the created client with the lead
+        instance.client = client
+        instance.save()  # Save to update the client field in Lead

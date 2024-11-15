@@ -1,49 +1,72 @@
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
-from django.views.generic import CreateView, UpdateView, DeleteView, ListView
+from django.views import generic
+from django.contrib.messages.views import SuccessMessageMixin
 from .models import Product
-from .forms import ProductForm
-from leads.models import Lead
+from .forms import ProductForm, AddProductForm
+from clients.models import Client
 
 
-class ProductListView(ListView):
+class ProductListView(generic.ListView):
     model = Product
     template_name = "products/product_list.html"
     context_object_name = "products"
 
-    def get_queryset(self):
-        return Product.objects.filter(lead_id=self.kwargs["lead_id"])
 
-
-class ProductCreateView(CreateView):
+class ProductDetailView(generic.DetailView):
     model = Product
-    form_class = ProductForm
-    template_name = "products/product_create.html"
-
-    def form_valid(self, form):
-        lead = get_object_or_404(Lead, pk=self.kwargs["lead_id"])
-        product = form.save(commit=False)
-        product.lead = lead
-        product.save()
-        return redirect("leads:lead-detail", pk=lead.pk)
+    template_name = "products/product_detail.html"
+    context_object_name = "product"
 
 
-class ProductUpdateView(UpdateView):
+class ProductUpdateView(SuccessMessageMixin, generic.UpdateView):
     model = Product
     form_class = ProductForm
     template_name = "products/product_update.html"
-
-    def get_success_url(self):
-        return reverse_lazy(
-            "products:product-list", kwargs={"lead_id": self.object.lead.pk}
-        )
+    success_url = reverse_lazy("products:product-list")
+    success_message = "Product updated successfully!"
 
 
-class ProductDeleteView(DeleteView):
+class ProductDeleteView(SuccessMessageMixin, generic.DeleteView):
     model = Product
     template_name = "products/product_delete.html"
+    success_url = reverse_lazy("products:product-list")
+    success_message = "Product deleted successfully!"
 
-    def get_success_url(self):
-        return reverse_lazy(
-            "products:product-list", kwargs={"lead_id": self.object.lead.pk}
+
+class ProductCreateView(generic.CreateView):
+    model = Product
+    form_class = ProductForm
+    template_name = "products/product_create.html"
+    #    success_url = reverse_lazy('products:product-list')
+    success_url = reverse_lazy("clients:client-list")
+
+
+class ClientProductsView(generic.TemplateView):
+    template_name = "products/client_products.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        client_id = self.kwargs["client_id"]
+        client = get_object_or_404(Client, pk=client_id)
+        context["client"] = client
+        context["products"] = (
+            client.products.all()
+        )  # Products associated with the client
+        return context
+
+
+class AddProductsToClientView(generic.FormView):
+    template_name = "products/add_products_to_client.html"
+    form_class = AddProductForm
+
+    def form_valid(self, form):
+        client_id = self.kwargs["client_id"]
+        client = get_object_or_404(Client, pk=client_id)
+        products = form.cleaned_data["products"]
+        client.products.add(
+            *products
+        )  # Associate the selected products with the client
+        return redirect(
+            reverse_lazy("products:client-products", kwargs={"client_id": client.id})
         )

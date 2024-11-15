@@ -2,7 +2,6 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.contrib.auth.models import AbstractUser
 from django.dispatch import receiver
-
 from clients.models import Client
 
 
@@ -74,12 +73,8 @@ post_save.connect(post_user_created_signal, sender=User)
 
 @receiver(post_save, sender=Lead)
 def create_client_from_lead(sender, instance, created, **kwargs):
-    """
-    Signal to create a Client instance when a Lead is converted.
-    """
-    # Check if the lead is converted and does not already have an associated client
-    if instance.is_converted and not instance.client:
-        # Create and associate a Client instance with the Lead
+    if not created and instance.is_converted and not instance.client:
+        # Create a new Client
         client = Client.objects.create(
             first_name=instance.first_name,
             last_name=instance.last_name,
@@ -89,6 +84,5 @@ def create_client_from_lead(sender, instance, created, **kwargs):
             organisation=instance.organisation,
             agent=instance.agent,
         )
-        # Associate the created client with the lead
         instance.client = client
-        instance.save()  # Save to update the client field in Lead
+        instance.save()

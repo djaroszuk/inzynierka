@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>{{ client.first_name }} {{ client.last_name }}'s Products</h1>
+
+<ul>
+    {% for product in products %}
+        <li>{{ product.name }} - {{ product.description }}</li>
+    {% empty %}
+        <p>No products added yet.</p>
+    {% endfor %}
+</ul>
+
+<a href="{% url 'products:add-products' client.id %}" class="btn btn-primary">Add Products</a>
+
+{%endblock%}

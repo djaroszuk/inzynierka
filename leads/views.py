@@ -23,7 +23,7 @@ class SignupView(generic.CreateView):
         return reverse("login")
 
 
-class LeadCreateView(LoginRequiredMixin, generic.CreateView):
+class LeadCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
     model = Lead
     form_class = LeadForm
     template_name = "leads/lead_create.html"
@@ -97,7 +97,12 @@ class LeadUpdateView(LoginRequiredMixin, generic.UpdateView):
 
     def get_queryset(self):
         user = self.request.user
-        return Lead.objects.filter(organisation=user.userprofile)
+        if user.is_organisor:
+            queryset = Lead.objects.filter(organisation=user.userprofile)
+        else:
+            queryset = Lead.objects.filter(organisation=user.agent.organisation)
+            queryset = queryset.filter(agent__user=user)
+        return queryset
 
 
 class LeadDeleteView(LoginRequiredMixin, generic.DeleteView):
@@ -109,7 +114,12 @@ class LeadDeleteView(LoginRequiredMixin, generic.DeleteView):
 
     def get_queryset(self):
         user = self.request.user
-        return Lead.objects.filter(organisation=user.userprofile)
+        if user.is_organisor:
+            queryset = Lead.objects.filter(organisation=user.userprofile)
+        else:
+            queryset = Lead.objects.filter(organisation=user.agent.organisation)
+            queryset = queryset.filter(agent__user=user)
+        return queryset
 
 
 class LandingPageView(generic.TemplateView):

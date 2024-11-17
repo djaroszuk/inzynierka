@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Order Details</h2>
+
+<h3>Client Information</h3>
+<p>
+    <strong>Name:</strong> {{ order.client.first_name }} {{ order.client.last_name }}<br>
+    <strong>Email:</strong> {{ order.client.email }}<br>
+    <strong>Phone:</strong> {{ order.client.phone_number }}
+</p>
+
+<h3>Order Information</h3>
+<p>
+    <strong>Order Number:</strong> {{ order.id }}<br>
+    <strong>Date Created:</strong> {{ order.date_created|date:"Y-m-d H:i" }}
+</p>
+
+<h3>Products in Order</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Product</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in order_products %}
+        <tr>
+            <td>{{ item.product.name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>${{ item.product.price|floatformat:2 }}</td>
+            <td>${{ item.total|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p><strong>Total Price:</strong> ${{ total_price|floatformat:2 }}</p>
+
+<a href="{% url 'orders:order-list' %}">Back to Orders</a>
+{% endblock %}

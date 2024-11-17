@@ -39,7 +39,7 @@ class ProductCreateView(generic.CreateView):
     form_class = ProductForm
     template_name = "products/product_create.html"
     #    success_url = reverse_lazy('products:product-list')
-    success_url = reverse_lazy("clients:client-list")
+    success_url = reverse_lazy("products:product-list")
 
 
 class ClientProductsView(generic.TemplateView):

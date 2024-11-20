@@ -2,6 +2,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.views import generic
+from django.shortcuts import get_object_or_404
 from .models import Client
 from .forms import ClientForm
 
@@ -20,6 +21,11 @@ class ClientDetailView(LoginRequiredMixin, generic.DetailView):
     model = Client
     template_name = "clients/client_detail.html"
     context_object_name = "client"
+
+    def get_object(self):
+        """Fetch the client using client_number instead of pk."""
+        client_number = self.kwargs["client_number"]
+        return get_object_or_404(Client, client_number=client_number)
 
 
 class ClientCreateView(LoginRequiredMixin, generic.CreateView):
@@ -47,6 +53,11 @@ class ClientUpdateView(LoginRequiredMixin, generic.UpdateView):
         "clients:client-list"
     )  # Po aktualizacji przekierowuje do listy leadów
 
+    def get_object(self):
+        """Fetch the client using client_number instead of pk."""
+        client_number = self.kwargs["client_number"]
+        return get_object_or_404(Client, client_number=client_number)
+
 
 class ClientDeleteView(LoginRequiredMixin, UserPassesTestMixin, generic.DeleteView):
     model = Client
@@ -56,3 +67,8 @@ class ClientDeleteView(LoginRequiredMixin, UserPassesTestMixin, generic.DeleteVi
     def test_func(self):
         """Sprawdza, czy użytkownik jest organizatorem."""
         return self.request.user.is_organisor
+
+    def get_object(self):
+        """Fetch the client using client_number instead of pk."""
+        client_number = self.kwargs["client_number"]
+        return get_object_or_404(Client, client_number=client_number)

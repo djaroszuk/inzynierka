@@ -1,8 +1,10 @@
-from django.views import generic, View
-from django.shortcuts import get_object_or_404, redirect, render
+from django.views import generic
+from django.shortcuts import get_object_or_404
 from .models import Order, OrderProduct
-from .forms import OrderForm, OrderProductFormSet
+from django.contrib.auth.mixins import LoginRequiredMixin
+from products.models import Product
 from clients.models import Client
+from django.urls import reverse_lazy
 
 
 class OrderListView(generic.ListView):
@@ -14,72 +16,50 @@ class OrderListView(generic.ListView):
         return Order.objects.select_related("client").all()
 
 
-class OrderDetailView(generic.DetailView):
+class OrderDetailView(LoginRequiredMixin, generic.DetailView):
     model = Order
     template_name = "orders/order_detail.html"
     context_object_name = "order"
 
+    def get_object(self):
+        """Retrieve the order based on its primary key."""
+        # Fetch the specific order without additional filtering
+        return get_object_or_404(Order, pk=self.kwargs["pk"])
+
+
+class OrderCreateView(LoginRequiredMixin, generic.CreateView):
+    model = Order
+    template_name = "orders/order_create.html"
+    fields = [
+        "client"
+    ]  # Only client field in the form (this can be pre-filled if needed)
+    success_url = reverse_lazy("orders:order-list")
+
     def get_context_data(self, **kwargs):
+        """Add the list of products to the context."""
         context = super().get_context_data(**kwargs)
-        order = self.object
-        order_products = OrderProduct.objects.filter(order=order).select_related(
-            "product"
-        )
-
-        # Calculate totals for each product and overall total
-        product_totals = [
-            {
-                "product": item.product,
-                "quantity": item.quantity,
-                "total": item.product.price * item.quantity,
-            }
-            for item in order_products
-        ]
-        total_price = sum(item["total"] for item in product_totals)
-
-        context["order_products"] = product_totals
-        context["total_price"] = total_price
+        context["products"] = Product.objects.all()  # Fetch all products
         return context
 
+    def form_valid(self, form):
+        """Override form_valid to handle creating associated OrderProduct instances."""
+        order = form.save()  # Save the order first
 
-class OrderCreateView(View):
-    def get(self, request, client_id):
-        client = get_object_or_404(Client, pk=client_id)
-        order_form = OrderForm(initial={"client": client})
-        formset = OrderProductFormSet(queryset=OrderProduct.objects.none())
-        return render(
-            request,
-            "orders/order_create.html",
-            {"order_form": order_form, "formset": formset},
-        )
+        # Handle creating OrderProduct entries after saving the order
+        product_ids = self.request.POST.getlist("product")  # Get selected products
+        quantities = self.request.POST.getlist("quantity")  # Get selected quantities
 
-    def post(self, request, client_id):
-        client = get_object_or_404(Client, pk=client_id)
-        order_form = OrderForm(request.POST)
-        formset = OrderProductFormSet(request.POST)
+        for product_id, quantity in zip(product_ids, quantities):
+            product = get_object_or_404(Product, pk=product_id)
+            OrderProduct.objects.create(
+                order=order,
+                product=product,
+                quantity=quantity,
+                product_name=product.name,
+                product_price=product.price,
+            )
 
-        if order_form.is_valid() and formset.is_valid():
-            # Save Order
-            order = order_form.save(commit=False)
-            order.client = client
-            order.save()
-
-            # Save OrderProduct items
-            for form in formset:
-                if form.cleaned_data and not form.cleaned_data.get("DELETE", False):
-                    order_product = form.save(commit=False)
-                    order_product.order = order
-                    order_product.save()
-
-            return redirect(
-                "clients:client-detail", pk=client.id
-            )  # Redirect to client detail page
-
-        return render(
-            request,
-            "orders/order_create.html",
-            {"order_form": order_form, "formset": formset},
-        )
+        return super().form_valid(form)
 
 
 class ClientOrdersView(generic.ListView):
@@ -89,7 +69,7 @@ class ClientOrdersView(generic.ListView):
 
     def get_queryset(self):
         # Get the client by client_id from the URL
-        client = get_object_or_404(Client, pk=self.kwargs["client_id"])
+        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
 
         # Filter orders by the client
         return Order.objects.filter(client=client)

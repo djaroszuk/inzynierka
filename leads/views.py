@@ -226,21 +226,15 @@ class LeadListByClientView(LoginRequiredMixin, generic.ListView):
     context_object_name = "leads"
 
     def get_queryset(self):
-        # Get the client ID from the URL
-        client_id = self.kwargs.get("client_id")
-
         # Fetch the client object or return a 404 if not found
-        client = get_object_or_404(Client, id=client_id)
+        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
 
         # Filter leads based on the associated client
         return Lead.objects.filter(client=client)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
-        # Fetch the client for the context so we can display its details
-        client_id = self.kwargs.get("client_id")
-        client = get_object_or_404(Client, id=client_id)
+        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
         context["client"] = client
 
         return context

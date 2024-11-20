@@ -47,8 +47,7 @@ class ClientProductsView(generic.TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        client_id = self.kwargs["client_id"]
-        client = get_object_or_404(Client, pk=client_id)
+        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
         context["client"] = client
         context["products"] = (
             client.products.all()
@@ -61,12 +60,14 @@ class AddProductsToClientView(generic.FormView):
     form_class = AddProductForm
 
     def form_valid(self, form):
-        client_id = self.kwargs["client_id"]
-        client = get_object_or_404(Client, pk=client_id)
+        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
         products = form.cleaned_data["products"]
         client.products.add(
             *products
         )  # Associate the selected products with the client
         return redirect(
-            reverse_lazy("products:client-products", kwargs={"client_id": client.id})
+            reverse_lazy(
+                "products:client-products",
+                kwargs={"client_number": client.client_number},
+            )
         )

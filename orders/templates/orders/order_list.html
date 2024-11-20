@@ -1,27 +1,26 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 
 {% block content %}
-<h2>Order List</h2>
+<h1>My Orders</h1>
 <table>
     <thead>
         <tr>
             <th>Order Number</th>
             <th>Client</th>
             <th>Date Created</th>
-            <th>Actions</th>
+            <th>Total Price</th>
         </tr>
     </thead>
     <tbody>
         {% for order in orders %}
         <tr>
-            <td>{{ order.id }}</td>
+            <td><a href="{% url 'orders:order-detail' order.id %}">{{ order.id }}</a></td>
             <td>{{ order.client }}</td>
-            <td>{{ order.date_created|date:"Y-m-d H:i" }}</td>
-            <td>
-                <a href="{% url 'orders:order-detail' order.id %}">View</a>
-            </td>
+            <td>{{ order.date_created }}</td>
+            <td>{{ order.total_price }}</td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+<a href="{% url 'orders:order-create' %}">Create New Order</a>
 {% endblock %}

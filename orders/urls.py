@@ -6,13 +6,13 @@ app_name = "orders"
 urlpatterns = [
     path("", views.OrderListView.as_view(), name="order-list"),
     path(
-        "client/<int:client_id>/create/",
+        "create/",
         views.OrderCreateView.as_view(),
         name="order-create",
     ),
     path("<int:pk>/", views.OrderDetailView.as_view(), name="order-detail"),
     path(
-        "client/<int:client_id>/orders/",
+        "client/<str:client_number>/orders/",
         views.ClientOrdersView.as_view(),
         name="client-orders",
     ),

@@ -15,12 +15,12 @@ urlpatterns = [
     path("", ProductListView.as_view(), name="product-list"),
     path("create/", ProductCreateView.as_view(), name="product-create"),
     path(
-        "client/<int:client_id>/products/",
+        "client/<str:client_number>/products/",
         ClientProductsView.as_view(),
         name="client-products",
     ),
     path(
-        "client/<int:client_id>/add-products/",
+        "client/<str:client_number>/add-products/",
         AddProductsToClientView.as_view(),
         name="add-products",
     ),

@@ -12,8 +12,12 @@ app_name = "clients"
 
 urlpatterns = [
     path("", ClientListView.as_view(), name="client-list"),
-    path("<int:pk>/", ClientDetailView.as_view(), name="client-detail"),
+    path("<str:client_number>/", ClientDetailView.as_view(), name="client-detail"),
     path("create/", ClientCreateView.as_view(), name="client-create"),
-    path("<int:pk>/update/", ClientUpdateView.as_view(), name="client-update"),
-    path("<int:pk>/delete/", ClientDeleteView.as_view(), name="client-delete"),
+    path(
+        "<str:client_number>/update/", ClientUpdateView.as_view(), name="client-update"
+    ),
+    path(
+        "<str:client_number>/delete/", ClientDeleteView.as_view(), name="client-delete"
+    ),
 ]

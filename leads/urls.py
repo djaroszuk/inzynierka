@@ -29,7 +29,7 @@ urlpatterns = [
     path("categories/", CategoryListView.as_view(), name="category-list"),
     path("categories/<int:pk>/", CategoryDetailView.as_view(), name="category-detail"),
     path(
-        "client/<int:client_id>/leads/",
+        "client/<str:client_number>/leads/",
         LeadListByClientView.as_view(),
         name="client-leads-list",
     ),

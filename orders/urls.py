@@ -16,4 +16,10 @@ urlpatterns = [
         views.ClientOrdersView.as_view(),
         name="client-orders",
     ),
+    path("statistics/", views.OrderStatisticsView.as_view(), name="order-statistics"),
+    path(
+        "statistics/product_sales/",
+        views.ProductSalesDetailView.as_view(),
+        name="product-sales-detail",
+    ),
 ]

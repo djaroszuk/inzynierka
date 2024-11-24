@@ -1,5 +1,6 @@
 from django.core.mail import send_mail
 from django.contrib import messages
+from django.db.models import Count
 from django.urls import reverse_lazy
 from django.views import generic
 from agents.mixins import OrganisorAndLoginRequiredMixin
@@ -155,16 +156,16 @@ class CategoryListView(LoginRequiredMixin, generic.ListView):
     context_object_name = "category_list"
 
     def get_context_data(self, **kwargs):
-        context = super(CategoryListView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         user = self.request.user
 
+        # Filter leads based on user type (organisor or agent)
         if user.is_organisor:
-            queryset = Lead.objects.filter(
-                organisation=user.userprofile,
-            )
+            queryset = Lead.objects.filter(organisation=user.userprofile)
         else:
             queryset = Lead.objects.filter(organisation=user.agent.organisation)
 
+        # Add unassigned lead count to the context
         context.update(
             {"unassigned_lead_count": queryset.filter(category__isnull=True).count()}
         )
@@ -172,13 +173,15 @@ class CategoryListView(LoginRequiredMixin, generic.ListView):
 
     def get_queryset(self):
         user = self.request.user
+
+        # Get categories based on user type (organisor or agent)
         if user.is_organisor:
-            queryset = Category.objects.filter(
-                organisation=user.userprofile,
-            )
+            queryset = Category.objects.filter(organisation=user.userprofile)
         else:
             queryset = Category.objects.filter(organisation=user.agent.organisation)
-        return queryset
+
+        # Annotate categories with the count of associated leads
+        return queryset.annotate(lead_count=Count("leads"))
 
 
 class CategoryDetailView(LoginRequiredMixin, generic.DetailView):

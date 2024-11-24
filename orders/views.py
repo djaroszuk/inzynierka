@@ -5,6 +5,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from products.models import Product
 from clients.models import Client
 from django.urls import reverse_lazy
+from datetime import datetime
+from .forms import StatisticsFilterForm
 
 
 class OrderListView(generic.ListView):
@@ -73,3 +75,53 @@ class ClientOrdersView(generic.ListView):
 
         # Filter orders by the client
         return Order.objects.filter(client=client)
+
+
+class OrderStatisticsView(generic.TemplateView):
+    template_name = "orders/statistics.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Initialize the form with GET data
+        form = StatisticsFilterForm(self.request.GET or None)
+        context["form"] = form
+
+        # Initialize filtering variables
+        start_datetime = None
+        end_datetime = None
+
+        if form.is_valid():
+            # Retrieve validated data from the form
+            start_datetime = form.cleaned_data.get("start_datetime")
+            end_datetime = form.cleaned_data.get("end_datetime")
+
+        # Calculate statistics using the manager methods
+        total_revenue = Order.objects.total_revenue(
+            start_date=start_datetime, end_date=end_datetime
+        )
+        total_products_sold = Order.objects.total_products_sold(
+            start_date=start_datetime, end_date=end_datetime
+        )
+        total_orders = Order.objects.filter(
+            date_created__gte=start_datetime if start_datetime else datetime.min,
+            date_created__lte=end_datetime if end_datetime else datetime.max,
+        ).count()
+
+        # Update context with statistics
+        context["statistics"] = {
+            "total_revenue": total_revenue,
+            "total_products_sold": total_products_sold,
+            "total_orders": total_orders,
+        }
+
+        return context
+
+
+class ProductSalesDetailView(generic.ListView):
+    template_name = "orders/product_sales_detail.html"
+    context_object_name = "product_sales"
+
+    def get_queryset(self):
+        # Get the total quantity of each product sold (snapshot of product name)
+        return OrderProduct.get_product_sales()

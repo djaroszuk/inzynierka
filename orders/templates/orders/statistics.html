@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="statistics">
+  <h1>Order Statistics</h1>
+
+  <form method="get">
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Filter</button>
+</form>
+
+  <!-- Display statistics -->
+  <ul>
+    <li><strong>Total Revenue:</strong> ${{ statistics.total_revenue }}</li>
+    <li><strong>Total Products Sold:</strong> {{ statistics.total_products_sold }}</li>
+    <li><strong>Total Orders:</strong> {{ statistics.total_orders }}</li>
+  </ul>
+</section>
+{% endblock %}

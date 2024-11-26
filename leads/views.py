@@ -12,8 +12,7 @@ from .forms import (
     AssignAgentForm,
     LeadCategoryUpdateForm,
 )
-from django.shortcuts import render, reverse, get_object_or_404
-from clients.models import Client
+from django.shortcuts import render, reverse
 
 
 class SignupView(generic.CreateView):
@@ -221,23 +220,3 @@ class LeadCategoryUpdateView(LoginRequiredMixin, generic.UpdateView):
 
     def get_success_url(self):
         return reverse("leads:lead-detail", kwargs={"pk": self.get_object().id})
-
-
-class LeadListByClientView(LoginRequiredMixin, generic.ListView):
-    model = Lead
-    template_name = "leads/lead_list_by_client.html"
-    context_object_name = "leads"
-
-    def get_queryset(self):
-        # Fetch the client object or return a 404 if not found
-        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
-
-        # Filter leads based on the associated client
-        return Lead.objects.filter(client=client)
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
-        context["client"] = client
-
-        return context

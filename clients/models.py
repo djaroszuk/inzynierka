@@ -1,6 +1,7 @@
 # clients/models.py
 import random
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 class Client(models.Model):
@@ -39,3 +40,25 @@ class Client(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} - Client"
+
+
+class Contact(models.Model):
+    class ReasonChoices(models.TextChoices):
+        FOLLOW_UP = "Follow-up", _("Follow-up")
+        SALES_OFFER = "Sales-offer", _("Sales-offer")
+        SUPPORT = "Support", _("Support")
+        COMPLAINT = "Complaint", _("Complaint")
+        OTHER = "Other", _("Other")
+
+    client = models.ForeignKey(
+        Client, on_delete=models.CASCADE, related_name="contacts"
+    )
+    reason = models.CharField(max_length=20, choices=ReasonChoices.choices)
+    description = models.TextField(blank=True, null=True)
+    contact_date = models.DateTimeField(auto_now_add=True)
+    agent = models.ForeignKey(
+        "leads.Agent", null=True, blank=True, on_delete=models.SET_NULL
+    )
+
+    def __str__(self):
+        return f"Contact with {self.client.first_name} ({self.reason}) by {self.agent.user.username}"

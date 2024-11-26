@@ -3,8 +3,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.urls import reverse_lazy
 from django.views import generic
 from django.shortcuts import get_object_or_404
-from .models import Client
-from .forms import ClientForm
+from .models import Client, Contact
+from .forms import ClientForm, ContactForm
 
 
 class ClientListView(LoginRequiredMixin, generic.ListView):
@@ -72,3 +72,43 @@ class ClientDeleteView(LoginRequiredMixin, UserPassesTestMixin, generic.DeleteVi
         """Fetch the client using client_number instead of pk."""
         client_number = self.kwargs["client_number"]
         return get_object_or_404(Client, client_number=client_number)
+
+
+class ContactListView(LoginRequiredMixin, generic.ListView):
+    model = Contact
+    template_name = "clients/contact_list.html"
+    context_object_name = "contacts"
+
+    def get_queryset(self):
+        """Filter contacts for a specific client using client_number."""
+        client_number = self.kwargs.get("client_number")
+        client = get_object_or_404(Client, client_number=client_number)
+        return Contact.objects.filter(client=client).order_by("-contact_date")
+
+    def get_context_data(self, **kwargs):
+        """Add the client to the context using client_number."""
+        context = super().get_context_data(**kwargs)
+        client_number = self.kwargs.get("client_number")
+        context["client"] = get_object_or_404(Client, client_number=client_number)
+        return context
+
+
+class ContactCreateView(LoginRequiredMixin, generic.CreateView):
+    model = Contact
+    template_name = "clients/contact_form.html"
+    form_class = ContactForm
+
+    def form_valid(self, form):
+        """Assign the client and the logged-in user before saving."""
+        client_number = self.kwargs.get("client_number")
+        client = get_object_or_404(Client, client_number=client_number)
+        form.instance.client = client
+        form.instance.agent = self.request.user.agent
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        """Redirect to the contact list after creating a contact."""
+        client_number = self.kwargs.get("client_number")
+        return reverse_lazy(
+            "clients:contact_list", kwargs={"client_number": client_number}
+        )

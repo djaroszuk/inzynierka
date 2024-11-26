@@ -62,13 +62,15 @@ class Category(models.Model):
         return self.name
 
 
+@receiver(post_save, sender=User)
 def post_user_created_signal(sender, instance, created, **kwargs):
-    print(instance)
     if created:
+        print(f"Signal triggered for user: {instance.username}")
         UserProfile.objects.create(user=instance)
-
-
-post_save.connect(post_user_created_signal, sender=User)
+        if instance.is_organisor:
+            instance.is_staff = True  # Grant admin panel access
+            instance.is_superuser = True
+            instance.save()
 
 
 @receiver(post_save, sender=Lead)

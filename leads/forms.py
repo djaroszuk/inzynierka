@@ -1,5 +1,5 @@
 from django import forms
-from .models import Lead, Agent
+from .models import Lead, Agent, Category
 from django.contrib.auth.forms import UserCreationForm, UsernameField
 from django.contrib.auth import get_user_model
 
@@ -40,3 +40,19 @@ class LeadCategoryUpdateForm(forms.ModelForm):
     class Meta:
         model = Lead
         fields = ("category", "is_converted")
+
+
+class CategoryFilterForm(forms.Form):
+    category = forms.ChoiceField(
+        choices=[("", "-- Select a Category --")]
+        + [(category.name, category.name) for category in Category.objects.all()],
+        required=False,
+        label="Filter by Category",
+    )
+
+
+class LeadUploadForm(forms.Form):
+    file = forms.FileField(
+        label="Upload Excel File",
+        widget=forms.ClearableFileInput(attrs={"class": "form-control"}),
+    )

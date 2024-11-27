@@ -1,8 +1,9 @@
+import openpyxl
 from django.core.mail import send_mail
 from django.contrib import messages
 from django.db.models import Count
 from django.urls import reverse_lazy
-from django.views import generic
+from django.views import generic, View
 from agents.mixins import OrganisorAndLoginRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Lead, Category
@@ -11,6 +12,8 @@ from .forms import (
     CustomUserCreationForm,
     AssignAgentForm,
     LeadCategoryUpdateForm,
+    CategoryFilterForm,
+    LeadUploadForm,
 )
 from django.shortcuts import render, reverse
 
@@ -48,27 +51,44 @@ class LeadCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
 class LeadListView(LoginRequiredMixin, generic.ListView):
     model = Lead
     template_name = "leads/lead-list.html"
-    context_object_name = "leads"  # domyślna nazwa dla kontekstu
+    context_object_name = "leads"
 
     def get_queryset(self):
         user = self.request.user
+        category_name = self.request.GET.get("category", "new")
+
+        # Start by filtering leads by the user's organization
+        queryset = Lead.objects.filter(organisation=user.userprofile)
+
         if user.is_organisor:
-            queryset = Lead.objects.filter(
-                organisation=user.userprofile, agent__isnull=False
-            )
+            queryset = Lead.objects.filter(organisation=user.userprofile)
         else:
             queryset = Lead.objects.filter(organisation=user.agent.organisation)
             queryset = queryset.filter(agent__user=user)
+
+        # Apply the category filter if one is selected
+        if category_name:
+            queryset = queryset.filter(category__name=category_name)
+
         return queryset
 
     def get_context_data(self, **kwargs):
-        context = super(LeadListView, self).get_context_data(**kwargs)
+        context = super().get_context_data(**kwargs)
         user = self.request.user
+
+        # Instantiate the category filter form
+        context["form"] = CategoryFilterForm(self.request.GET)
+
+        # Get all categories for the current user's organisation
+        context["categories"] = Category.objects.filter(organisation=user.userprofile)
+
+        # Optionally, include unassigned leads for the organizer
         if user.is_organisor:
-            queryset = Lead.objects.filter(
+            unassigned_leads = Lead.objects.filter(
                 organisation=user.userprofile, agent__isnull=True
             )
-            context.update({"unassigned_leads": queryset})
+            context.update({"unassigned_leads": unassigned_leads})
+
         return context
 
 
@@ -220,3 +240,86 @@ class LeadCategoryUpdateView(LoginRequiredMixin, generic.UpdateView):
 
     def get_success_url(self):
         return reverse("leads:lead-detail", kwargs={"pk": self.get_object().id})
+
+
+class LeadUploadView(LoginRequiredMixin, View):
+    template_name = "leads/lead_upload.html"
+
+    def get(self, request, *args, **kwargs):
+        form = LeadUploadForm()
+        return render(request, self.template_name, {"form": form})
+
+    def post(self, request, *args, **kwargs):
+        form = LeadUploadForm(request.POST, request.FILES)
+
+        if form.is_valid():
+            file = form.cleaned_data["file"]
+            try:
+                # Load the Excel file
+                wb = openpyxl.load_workbook(file)
+                sheet = wb.active
+
+                skipped_rows = []  # Track rows with missing fields
+                duplicate_emails = []  # Track duplicate email entries
+                created_leads = 0  # Count successfully created leads
+                new_category = Category.objects.get(
+                    name="new", organisation=request.user.userprofile
+                )
+
+                # Process each row in the sheet (skip header row)
+                for idx, row in enumerate(
+                    sheet.iter_rows(min_row=2, values_only=True), start=2
+                ):
+                    first_name, last_name, age, email = row[:4]
+
+                    # Skip rows with empty required fields
+                    if not all([first_name, last_name, age, email]):
+                        skipped_rows.append(idx)  # Add row number to skipped list
+                        continue
+
+                    # Check for duplicates
+                    if Lead.objects.filter(
+                        email=email, organisation=request.user.userprofile
+                    ).exists():
+                        duplicate_emails.append(email)
+                        continue
+
+                    # Create the lead
+                    Lead.objects.create(
+                        first_name=first_name,
+                        last_name=last_name,
+                        age=int(age),
+                        email=email,
+                        organisation=request.user.userprofile,
+                        category=new_category,  # Assign the "new" category
+                    )
+                    created_leads += 1
+
+                # Provide feedback after processing
+                if skipped_rows:
+                    messages.warning(
+                        request,
+                        f"Skipped rows due to missing fields: {', '.join(map(str, skipped_rows))}",
+                    )
+                if duplicate_emails:
+                    messages.warning(
+                        request,
+                        f"Skipped {len(duplicate_emails)} rows due to duplicate emails: {', '.join(duplicate_emails)}",
+                    )
+                if created_leads:
+                    messages.success(
+                        request, f"Successfully imported {created_leads} leads!"
+                    )
+                if not skipped_rows and not duplicate_emails and created_leads == 0:
+                    messages.info(request, "No leads were imported.")
+
+            except Exception:
+                messages.error(
+                    request, "Error processing file: file is not an Excel file"
+                )
+
+        else:
+            messages.error(request, "Invalid file. Please upload a valid Excel file.")
+
+        # Always render the same page again with feedback messages
+        return render(request, self.template_name, {"form": form})

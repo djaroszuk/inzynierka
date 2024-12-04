@@ -5,5 +5,6 @@
 <p>{{ product.description }}</p>
 <p>Price: ${{ product.price }}</p>
 <a href="{% url 'products:product-update' product.pk %}">Edit</a>
+<a href="{% url 'products:product-delete' product.pk %}">Delete</a>
 <a href="{% url 'products:product-list' %}">Back to List</a>
 {% endblock %}

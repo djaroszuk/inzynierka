@@ -45,6 +45,15 @@ class Lead(models.Model):
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 
+    def assign_to_agent(self, agent):
+        """
+        Assign the lead to a specific agent.
+        """
+        if self.agent is not None:
+            raise ValueError("Lead is already assigned to an agent.")
+        self.agent = agent
+        self.save()
+
 
 class Agent(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)

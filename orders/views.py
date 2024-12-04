@@ -4,9 +4,11 @@ from .models import Order, OrderProduct
 from django.contrib.auth.mixins import LoginRequiredMixin
 from products.models import Product
 from clients.models import Client
-from django.urls import reverse_lazy
 from datetime import datetime
 from .forms import StatisticsFilterForm
+from django.shortcuts import redirect, render, reverse
+from django.contrib import messages
+from django.http import HttpResponseRedirect
 
 
 class OrderListView(generic.ListView):
@@ -35,7 +37,6 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
     fields = [
         "client"
     ]  # Only client field in the form (this can be pre-filled if needed)
-    success_url = reverse_lazy("orders:order-list")
 
     def get_context_data(self, **kwargs):
         """Add the list of products to the context."""
@@ -45,23 +46,91 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
 
     def form_valid(self, form):
         """Override form_valid to handle creating associated OrderProduct instances."""
-        order = form.save()  # Save the order first
+        # Get selected products and quantities
+        product_ids = self.request.POST.getlist("product")  # List of selected products
+        quantities = self.request.POST.getlist(
+            "quantity"
+        )  # List of quantities for each product
 
-        # Handle creating OrderProduct entries after saving the order
-        product_ids = self.request.POST.getlist("product")  # Get selected products
-        quantities = self.request.POST.getlist("quantity")  # Get selected quantities
+        # Convert quantities to integers
+        quantities = [int(q) for q in quantities]
 
-        for product_id, quantity in zip(product_ids, quantities):
-            product = get_object_or_404(Product, pk=product_id)
-            OrderProduct.objects.create(
-                order=order,
-                product=product,
-                quantity=quantity,
-                product_name=product.name,
-                product_price=product.price,
+        # Validate that products and quantities are selected and valid
+        if not product_ids or not any(q > 0 for q in quantities):
+            messages.error(
+                self.request,
+                "Please select at least one product and specify a valid quantity.",
+            )
+            return render(
+                self.request, self.template_name, self.get_context_data(form=form)
             )
 
-        return super().form_valid(form)
+        # Check if there is sufficient stock for each product
+        for product_id, quantity in zip(product_ids, quantities):
+            product = get_object_or_404(Product, pk=product_id)
+            if product.stock_quantity < quantity:
+                # If there is not enough stock, add an error message and return to the form
+                messages.error(
+                    self.request,
+                    f"Insufficient stock for {product.name}. Available: {product.stock_quantity}.",
+                )
+                return render(
+                    self.request, self.template_name, self.get_context_data(form=form)
+                )
+
+        # Create the order and save it
+        order = form.save(commit=False)
+        order.status = "Pending"  # Set status to "Pending" initially
+        order.save()
+
+        # Create OrderProduct entries for each selected product and adjust stock
+        for product_id, quantity in zip(product_ids, quantities):
+            if quantity > 0:
+                product = get_object_or_404(Product, pk=product_id)
+
+                # Adjust the stock for the product
+                product.stock_quantity -= quantity
+                product.save()  # Save the updated stock_quantity
+
+                # Create the OrderProduct instance
+                OrderProduct.objects.create(
+                    order=order,
+                    product=product,
+                    quantity=quantity,
+                    product_name=product.name,
+                    product_price=product.price,
+                )
+
+        # Redirect to the Order Summary View after the order is created
+        return HttpResponseRedirect(
+            reverse("orders:order-summary", kwargs={"pk": order.pk})
+        )
+
+
+class OrderSummaryView(LoginRequiredMixin, generic.DetailView):
+    model = Order
+    template_name = "orders/order_summary.html"
+
+    def post(self, request, *args, **kwargs):
+        order = self.get_object()
+        action = request.POST.get("action")
+
+        if action == "accept":
+            order.status = "Accepted"
+            order.save()
+            messages.success(request, "The order has been accepted.")
+            # Mock sending an email
+            print(f"Email sent to {order.client.email}: Order {order.id} accepted.")
+            return redirect("orders:order-list")
+
+        elif action == "cancel":
+            order.delete()
+            messages.success(request, "The order has been canceled and deleted.")
+            return redirect("orders:order-list")
+
+        # Fallback if no valid action is provided
+        messages.error(request, "Invalid action.")
+        return redirect("orders:order-summary", pk=order.pk)
 
 
 class ClientOrdersView(generic.ListView):

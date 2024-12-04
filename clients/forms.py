@@ -19,3 +19,16 @@ class ContactForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["reason"].widget.attrs.update({"class": "form-control"})
         self.fields["description"].widget.attrs.update({"class": "form-control"})
+
+
+class ClientSearchForm(forms.Form):
+    q = forms.CharField(
+        label="Search by Client Number",
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "border rounded px-4 py-2 text-gray-700",
+                "placeholder": "Enter client number",
+            }
+        ),
+    )

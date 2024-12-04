@@ -25,19 +25,22 @@
                         <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100 rounded-tl rounded-bl">Product Name</th>
                         <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">Description</th>
                         <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">Price</th>
-                        <th class="w-10 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100 rounded-tr rounded-br">Actions</th>
+                        <th class="w-10 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100 rounded-tr rounded-br">Quantity</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for product in products %}
                     <tr>
-                        <td class="px-4 py-3">{{ product.name }}</td>
-                        <td class="px-4 py-3">{{ product.description }}</td>
-                        <td class="px-4 py-3 text-lg text-gray-900">${{ product.price }}</td>
-                        <td class="w-10 text-center">
-                            <a href="{% url 'products:product-detail' product.pk %}" class="text-indigo-500">Update</a>|
-                            <a href="{% url 'products:product-detail' product.pk %}" class="text-indigo-500">Delete</a>
+                        <td class="px-4 py-3">
+                            <a href="{% url 'products:product-detail' product.pk %}" class="text-indigo-500 hover:underline">
+                                {{ product.name }}
+                            </a>
                         </td>
+                        <td class="px-4 py-3">{{ product.description }}</td>
+                        <td class="px-4 py-3 text-lg text-gray-900">${{ product.price|floatformat:2 }}</td>
+                        <td class="px-4 py-3">{{ product.stock_quantity }}</td>
+                        <td class="w-10 text-center">
+                    </tr>
                     </tr>
                     {% empty %}
                     <tr>

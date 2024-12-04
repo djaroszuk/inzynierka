@@ -10,6 +10,7 @@ urlpatterns = [
         views.OrderCreateView.as_view(),
         name="order-create",
     ),
+    path("summary/<int:pk>/", views.OrderSummaryView.as_view(), name="order-summary"),
     path("<int:pk>/", views.OrderDetailView.as_view(), name="order-detail"),
     path(
         "client/<str:client_number>/orders/",

@@ -4,7 +4,8 @@ from django.urls import reverse_lazy
 from django.views import generic
 from django.shortcuts import get_object_or_404
 from .models import Client, Contact
-from .forms import ClientForm, ContactForm
+from .forms import ClientForm, ContactForm, ClientSearchForm
+from django.db.models import Q
 
 
 class ClientListView(LoginRequiredMixin, generic.ListView):
@@ -13,8 +14,20 @@ class ClientListView(LoginRequiredMixin, generic.ListView):
     context_object_name = "clients"
 
     def get_queryset(self):
-        """Zwraca listę wszystkich klientów dla zalogowanych użytkowników."""
-        return Client.objects.all()
+        """Return a list of clients filtered by the search query."""
+        queryset = Client.objects.all()
+        query = self.request.GET.get("q")
+        if query:
+            queryset = queryset.filter(
+                Q(client_number__icontains=query)  # Case-insensitive search
+            )
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        """Add the search form to the context."""
+        context = super().get_context_data(**kwargs)
+        context["form"] = ClientSearchForm(self.request.GET)  # Pre-fill with query data
+        return context
 
 
 class ClientDetailView(LoginRequiredMixin, generic.DetailView):
@@ -110,5 +123,5 @@ class ContactCreateView(LoginRequiredMixin, generic.CreateView):
         """Redirect to the contact list after creating a contact."""
         client_number = self.kwargs.get("client_number")
         return reverse_lazy(
-            "clients:contact_list", kwargs={"client_number": client_number}
+            "clients:contact-list", kwargs={"client_number": client_number}
         )

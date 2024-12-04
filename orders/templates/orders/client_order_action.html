@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto my-8">
+    <h1 class="text-xl font-bold">Order Review</h1>
+    <p>Status: {{ order.status }}</p>
+
+    <h2 class="mt-4 text-lg font-semibold">Products</h2>
+    <ul>
+        {% for product in order.orderproduct_set.all %}
+        <li>{{ product.product_name }} - Quantity: {{ product.quantity }}</li>
+        {% endfor %}
+    </ul>
+
+    {% if order.status == "Pending" %}
+    <form method="post">
+        {% csrf_token %}
+        <button name="action" value="accept" class="bg-green-500 text-white px-4 py-2 rounded">Accept</button>
+        <button name="action" value="cancel" class="bg-red-500 text-white px-4 py-2 rounded">Cancel</button>
+    </form>
+    {% else %}
+    <p>Thank you for responding to the order.</p>
+    {% endif %}
+</div>
+{% endblock %}

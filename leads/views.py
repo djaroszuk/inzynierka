@@ -15,7 +15,7 @@ from .forms import (
     CategoryFilterForm,
     LeadUploadForm,
 )
-from django.shortcuts import render, reverse
+from django.shortcuts import render, reverse, redirect
 
 
 class SignupView(generic.CreateView):
@@ -30,20 +30,36 @@ class LeadCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
     model = Lead
     form_class = LeadForm
     template_name = "leads/lead_create.html"
-    success_url = reverse_lazy(
-        "leads:lead-list"
-    )  # Po utworzeniu przekierowuje do listy leadów
+    success_url = reverse_lazy("leads:lead-list")
 
     def form_valid(self, form):
         lead = form.save(commit=False)
         lead.organisation = self.request.user.userprofile
+
+        # Fetch the "new" category for the organization
+        try:
+            new_category = Category.objects.get(
+                name="new", organisation=self.request.user.userprofile
+            )
+            lead.category = new_category  # Assign the "new" category
+        except Category.DoesNotExist:
+            messages.error(
+                self.request,
+                "The 'new' category is not available for this organization.",
+            )
+            return self.form_invalid(form)
+
         lead.save()
+
+        # Send email notification
         send_mail(
             subject="A lead has been created",
             message="Go to the site to see the new lead",
             from_email="test@test.com",
             recipient_list=["test2@test.com"],
         )
+
+        # Success message
         messages.success(self.request, "You have successfully created a lead")
         return super(LeadCreateView, self).form_valid(form)
 
@@ -57,16 +73,15 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
         user = self.request.user
         category_name = self.request.GET.get("category", "new")
 
-        # Start by filtering leads by the user's organization
+        # Filter leads by organization and (for agents) by the agent itself
         queryset = Lead.objects.filter(organisation=user.userprofile)
-
         if user.is_organisor:
             queryset = Lead.objects.filter(organisation=user.userprofile)
         else:
             queryset = Lead.objects.filter(organisation=user.agent.organisation)
             queryset = queryset.filter(agent__user=user)
 
-        # Apply the category filter if one is selected
+        # Apply category filter
         if category_name:
             queryset = queryset.filter(category__name=category_name)
 
@@ -76,13 +91,13 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
         context = super().get_context_data(**kwargs)
         user = self.request.user
 
-        # Instantiate the category filter form
+        # Category filter form
         context["form"] = CategoryFilterForm(self.request.GET)
 
-        # Get all categories for the current user's organisation
+        # All categories for the user's organization
         context["categories"] = Category.objects.filter(organisation=user.userprofile)
 
-        # Optionally, include unassigned leads for the organizer
+        # Optionally include unassigned leads for the organizer
         if user.is_organisor:
             unassigned_leads = Lead.objects.filter(
                 organisation=user.userprofile, agent__isnull=True
@@ -90,6 +105,33 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
             context.update({"unassigned_leads": unassigned_leads})
 
         return context
+
+    def post(self, request, *args, **kwargs):
+        user = self.request.user
+        if not user.is_organisor:  # Only agents can take a lead
+            # Find the oldest unassigned lead for the agent's organization
+            oldest_unassigned_lead = (
+                Lead.objects.filter(
+                    organisation=user.agent.organisation, agent__isnull=True
+                )
+                .order_by("date_created")
+                .first()
+            )
+
+            if oldest_unassigned_lead:
+                # Assign the lead to the current agent
+                oldest_unassigned_lead.agent = user.agent
+                oldest_unassigned_lead.save()
+
+                # Provide success feedback
+                messages.success(
+                    request,
+                    f"You successfully took the lead: {oldest_unassigned_lead.first_name} {oldest_unassigned_lead.last_name}.",
+                )
+            else:
+                # Provide feedback when no unassigned leads are available
+                messages.warning(request, "No unassigned leads available.")
+        return redirect("leads:lead-list")
 
 
 class LeadDetailView(LoginRequiredMixin, generic.DetailView):

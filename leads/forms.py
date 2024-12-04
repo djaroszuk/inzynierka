@@ -2,6 +2,8 @@ from django import forms
 from .models import Lead, Agent, Category
 from django.contrib.auth.forms import UserCreationForm, UsernameField
 from django.contrib.auth import get_user_model
+from django.db import OperationalError, ProgrammingError
+
 
 User = get_user_model()
 
@@ -42,12 +44,19 @@ class LeadCategoryUpdateForm(forms.ModelForm):
         fields = ("category", "is_converted")
 
 
+try:
+    CATEGORY_CHOICES = [
+        (category.name, category.name) for category in Category.objects.all()
+    ]
+except (OperationalError, ProgrammingError):
+    # If the table doesn't exist or is otherwise unavailable, use an empty list.
+    CATEGORY_CHOICES = []
+
+
 class CategoryFilterForm(forms.Form):
     category = forms.ChoiceField(
-        choices=[("", "-- Select a Category --")]
-        + [(category.name, category.name) for category in Category.objects.all()],
+        choices=CATEGORY_CHOICES,
         required=False,
-        label="Filter by Category",
     )
 
 

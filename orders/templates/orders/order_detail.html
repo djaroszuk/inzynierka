@@ -9,6 +9,7 @@
     <a href="{% url 'clients:client-detail' order.client.client_number %}">{{ order.client.client_number }}</a>
 </p>
 <p><strong>Date Created:</strong> {{ order.date_created }}</p>
+<p><strong>Status:</strong> {{ order.status }}</p>
 <p><strong>Total Price:</strong> {{ order.total_price|floatformat:2 }}</p>
 
 <h3>Products in this Order:</h3>

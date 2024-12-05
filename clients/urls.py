@@ -8,6 +8,7 @@ from .views import (
     ClientDeleteView,
     ContactListView,
     ContactCreateView,
+    ClientStatisticsView,
 )
 
 app_name = "clients"
@@ -29,5 +30,10 @@ urlpatterns = [
         "<str:client_number>/contacts/new/",
         ContactCreateView.as_view(),
         name="contact-create",
+    ),
+    path(
+        "client/<str:client_number>/statistics/",
+        ClientStatisticsView.as_view(),
+        name="client-statistics",
     ),
 ]

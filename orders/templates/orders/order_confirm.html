@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1>Order Confirmation</h1>
+
+    <p>You have received an offer for Order #{{ order.id }}.</p>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="token" value="{{ order.offer_token }}">
+
+        <button type="submit" name="action" value="accept">Accept Offer</button>
+        <button type="submit" name="action" value="deny">Deny Offer</button>
+    </form>
+{% endblock %}

@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from .models import Client, Contact
 from .forms import ClientForm, ContactForm, ClientSearchForm
 from django.db.models import Q
+from orders.models import Order
 
 
 class ClientListView(LoginRequiredMixin, generic.ListView):
@@ -125,3 +126,23 @@ class ContactCreateView(LoginRequiredMixin, generic.CreateView):
         return reverse_lazy(
             "clients:contact-list", kwargs={"client_number": client_number}
         )
+
+
+class ClientStatisticsView(generic.TemplateView):
+    template_name = "clients/client_statistics.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Get the client object based on the client_id from the URL
+        client_number = self.kwargs.get("client_number")
+        client = get_object_or_404(Client, client_number=client_number)
+
+        # Get client statistics from OrderManager
+        client_statistics = Order.objects.client_statistics(client)
+
+        # Add client statistics to context
+        context["client"] = client
+        context["client_statistics"] = client_statistics
+
+        return context

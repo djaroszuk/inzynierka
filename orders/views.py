@@ -10,6 +10,10 @@ from django.shortcuts import redirect, render, reverse
 from django.contrib import messages
 from django.http import HttpResponseRedirect
 
+from django.utils.http import urlencode
+from django.contrib.sites.shortcuts import get_current_site
+import uuid
+
 
 class OrderListView(generic.ListView):
     model = Order
@@ -115,12 +119,38 @@ class OrderSummaryView(LoginRequiredMixin, generic.DetailView):
         order = self.get_object()
         action = request.POST.get("action")
 
-        if action == "accept":
-            order.status = "Accepted"
+        if action == "send_offer":
+            # Generate a unique token for the link
+            token = str(uuid.uuid4())
+            order.offer_token = token  # Save the token in the order model (you should add this field to your model)
             order.save()
-            messages.success(request, "The order has been accepted.")
-            # Mock sending an email
-            print(f"Email sent to {order.client.email}: Order {order.id} accepted.")
+
+            # # Send email to the client with a link to accept or deny
+            # subject = f"Offer for Order #{order.id}"
+            # message = f"""
+            #     Dear {order.client.name},
+
+            #     An offer has been made for your order #{order.id}. To review and either accept or deny the offer, please click the link below:
+
+            #     {self.get_order_confirmation_url(order, token)}
+
+            #     If you have any questions, please contact us.
+
+            #     Best regards,
+            #     Your Company Name
+            # """
+            # send_mail(
+            #     subject,
+            #     message,
+            #     'from@example.com',  # Replace with your email
+            #     [order.client.email],
+            #     fail_silently=False,
+            # )
+            # Instead of sending an email, print the link to the console
+            offer_url = self.get_order_confirmation_url(order, token)
+            print(f"Mock email sent to {order.client.email} with the link: {offer_url}")
+
+            messages.success(request, "The offer has been sent to the client.")
             return redirect("orders:order-list")
 
         elif action == "cancel":
@@ -128,9 +158,57 @@ class OrderSummaryView(LoginRequiredMixin, generic.DetailView):
             messages.success(request, "The order has been canceled and deleted.")
             return redirect("orders:order-list")
 
-        # Fallback if no valid action is provided
         messages.error(request, "Invalid action.")
         return redirect("orders:order-summary", pk=order.pk)
+
+    def get_order_confirmation_url(self, order, token):
+        # Generate the link that the client will click to accept or deny the offer
+        domain = get_current_site(self.request).domain
+        path = reverse("orders:order_confirm", kwargs={"order_id": order.id})
+        query = urlencode({"token": token})
+        return f"http://{domain}{path}?{query}"
+
+
+class OrderConfirmView(generic.View):
+    def get(self, request, *args, **kwargs):
+        order_id = kwargs["order_id"]
+        token = request.GET.get("token")
+
+        # Get the order based on the ID and check if the token matches
+        order = get_object_or_404(Order, pk=order_id)
+
+        # Check if the token matches the one stored in the order
+        if order.offer_token != token:
+            messages.error(request, "Invalid or expired offer link.")
+            return redirect("orders:order-list")
+
+        return render(request, "orders/order_confirm.html", {"order": order})
+
+    def post(self, request, *args, **kwargs):
+        order_id = kwargs["order_id"]
+        action = request.POST.get("action")
+        token = request.POST.get("token")
+
+        # Get the order and validate the token
+        order = get_object_or_404(Order, pk=order_id)
+
+        if order.offer_token != token:
+            messages.error(request, "Invalid or expired offer link.")
+            return redirect("orders:order-list")
+
+        if action == "accept":
+            # Accept the offer and change the order status
+            order.status = "Accepted"
+            order.save()
+            messages.success(request, "You have accepted the offer.")
+        elif action == "deny":
+            # Deny the offer and delete the order
+            order.delete()
+            messages.success(request, "You have denied the offer.")
+        else:
+            messages.error(request, "Invalid action.")
+
+        return redirect("orders:order-list")
 
 
 class ClientOrdersView(generic.ListView):

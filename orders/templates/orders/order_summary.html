@@ -3,25 +3,29 @@
 {% block content %}
 <h1>Order Summary</h1>
 
+<!-- Display basic order details -->
 <p><strong>Client:</strong> {{ order.client }}</p>
-<p><strong>Date:</strong> {{ order.date_created }}</p>
+<p><strong>Date Created:</strong> {{ order.date_created }}</p>
 <p><strong>Status:</strong> {{ order.get_status_display }}</p>
 
+<!-- List the products in the order -->
 <h3>Products:</h3>
 <ul>
     {% for order_product in order.order_products.all %}
     <li>
         <strong>{{ order_product.product_name }}</strong>:
-        {{ order_product.quantity }} × ${{ order_product.product_price }} = ${{ order_product.total_price }}
+        {{ order_product.quantity }} × ${{ order_product.product_price }}
+        = ${{ order_product.total_price }}
     </li>
     {% endfor %}
 </ul>
 
 <p><strong>Total Price:</strong> ${{ order.total_price }}</p>
 
+<!-- Action Buttons -->
 <form method="POST">
     {% csrf_token %}
-    <button type="submit" name="action" value="accept">Accept</button>
-    <button type="submit" name="action" value="cancel">Cancel</button>
+    <button type="submit" name="action" value="send_offer">Send Offer</button>
+    <button type="submit" name="action" value="cancel">Cancel Order</button>
 </form>
 {% endblock %}

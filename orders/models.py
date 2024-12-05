@@ -40,13 +40,21 @@ class OrderManager(models.Manager):
             "total_orders": self.filter(status="Accepted").count(),
         }
 
-    def client_statistics(self, client):
-        """Calculate statistics for a specific client, considering only accepted orders."""
+    def client_statistics(self, client, start_date=None, end_date=None):
+        """Calculate statistics for a specific client, considering only accepted orders and optional date filters."""
         queryset = self.filter(
             client=client, status="Accepted"
         )  # Only accepted orders for the client
-        total_revenue = self.total_revenue_for_client(client)
-        total_products_sold = self.total_products_sold_for_client(client)
+
+        if start_date:
+            queryset = queryset.filter(date_created__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(date_created__lte=end_date)
+
+        total_revenue = self.total_revenue_for_client(client, start_date, end_date)
+        total_products_sold = self.total_products_sold_for_client(
+            client, start_date, end_date
+        )
         total_orders = queryset.count()
 
         return {
@@ -55,9 +63,14 @@ class OrderManager(models.Manager):
             "total_orders": total_orders,
         }
 
-    def total_revenue_for_client(self, client):
-        """Calculate total revenue for a specific client, considering only accepted orders."""
+    def total_revenue_for_client(self, client, start_date=None, end_date=None):
+        """Calculate total revenue for a specific client, considering only accepted orders and optional date filters."""
         queryset = self.filter(client=client, status="Accepted")
+        if start_date:
+            queryset = queryset.filter(date_created__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(date_created__lte=end_date)
+
         return (
             queryset.aggregate(
                 total=Sum(
@@ -67,9 +80,14 @@ class OrderManager(models.Manager):
             or 0
         )
 
-    def total_products_sold_for_client(self, client):
-        """Calculate total products sold for a specific client, considering only accepted orders."""
+    def total_products_sold_for_client(self, client, start_date=None, end_date=None):
+        """Calculate total products sold for a specific client, considering only accepted orders and optional date filters."""
         queryset = self.filter(client=client, status="Accepted")
+        if start_date:
+            queryset = queryset.filter(date_created__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(date_created__lte=end_date)
+
         return queryset.aggregate(total=Sum("order_products__quantity"))["total"] or 0
 
 

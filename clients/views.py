@@ -7,6 +7,7 @@ from .models import Client, Contact
 from .forms import ClientForm, ContactForm, ClientSearchForm
 from django.db.models import Q
 from orders.models import Order
+from orders.forms import StatisticsFilterForm
 
 
 class ClientListView(LoginRequiredMixin, generic.ListView):
@@ -134,12 +135,26 @@ class ClientStatisticsView(generic.TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
+        form = StatisticsFilterForm(self.request.GET or None)
+        context["form"] = form
+
+        # Initialize filtering variables
+        start_datetime = None
+        end_datetime = None
+
+        if form.is_valid():
+            # Retrieve validated data from the form
+            start_datetime = form.cleaned_data.get("start_datetime")
+            end_datetime = form.cleaned_data.get("end_datetime")
+
         # Get the client object based on the client_id from the URL
         client_number = self.kwargs.get("client_number")
         client = get_object_or_404(Client, client_number=client_number)
 
         # Get client statistics from OrderManager
-        client_statistics = Order.objects.client_statistics(client)
+        client_statistics = Order.objects.client_statistics(
+            client, start_date=start_datetime, end_date=end_datetime
+        )
 
         # Add client statistics to context
         context["client"] = client

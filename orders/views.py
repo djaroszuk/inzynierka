@@ -9,7 +9,6 @@ from .forms import StatisticsFilterForm
 from django.shortcuts import redirect, render, reverse
 from django.contrib import messages
 from django.http import HttpResponseRedirect
-
 from django.utils.http import urlencode
 from django.contrib.sites.shortcuts import get_current_site
 import uuid
@@ -254,7 +253,6 @@ class OrderStatisticsView(generic.TemplateView):
             date_created__gte=start_datetime if start_datetime else datetime.min,
             date_created__lte=end_datetime if end_datetime else datetime.max,
         ).count()
-
         # Update context with statistics
         context["statistics"] = {
             "total_revenue": total_revenue,

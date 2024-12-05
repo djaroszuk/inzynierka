@@ -8,7 +8,11 @@
 <form method="post">
     {% csrf_token %}
     {{form|crispy}}
-    <button type='submit' class="w-full bg-blue-500 text-white hover:bg-blue-700 px-3 py-1 rounded-md">Login</button>
+    <div class="w-full">
+        <button type = "submit" class="w-1/2 bg-blue-500 text-white hover:bg-blue-700 px-3 py-1 rounded-md mx-auto block">
+            Login
+        </button>
+    </div>
 
 </form>
 <div class="py-3 border-t border-gray-300 mt-5">

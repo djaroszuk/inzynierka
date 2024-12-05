@@ -1,8 +1,19 @@
-<!-- clients/statistics.html -->
-<h1>Statistics for {{ client.name }}</h1>
+{% extends "base.html" %}
 
-<p><strong>Total Revenue:</strong> ${{ client_statistics.total_revenue }}</p>
-<p><strong>Total Products Sold:</strong> {{ client_statistics.total_products_sold }}</p>
-<p><strong>Total Orders:</strong> {{ client_statistics.total_orders }}</p>
+{% block content %}
+<section class="statistics">
+<h1>Statistics for {{client.first_name}} {{client.last_name}}</h1>
 
-<!-- You can also add more detailed information here -->
+  <form method="get">
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Filter</button>
+</form>
+
+  <!-- Display statistics -->
+  <ul>
+    <li><strong>Total Revenue:</strong> ${{ client_statistics.total_revenue }}</li>
+    <li><strong>Total Products Sold:</strong><a href="{% url 'orders:product-sales-detail' %}"> {{ client_statistics.total_products_sold }}</a></li>
+    <li><strong>Total Orders:</strong> {{ client_statistics.total_orders }}</li>
+  </ul>
+</section>
+{% endblock %}

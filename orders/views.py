@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404
 from .models import Order, OrderProduct
 from django.contrib.auth.mixins import LoginRequiredMixin
 from products.models import Product
-from clients.models import Client
+from clients.models import Client, Contact
 from datetime import datetime
 from .forms import StatisticsFilterForm
 from django.shortcuts import redirect, render, reverse
@@ -13,6 +13,7 @@ from django.utils.http import urlencode
 from django.contrib.sites.shortcuts import get_current_site
 import uuid
 from django.core.mail import send_mail
+from django.utils.timezone import now
 
 
 class OrderListView(generic.ListView):
@@ -104,6 +105,15 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
                     product_name=product.name,
                     product_price=product.price,
                 )
+
+                # Create a Contact instance for the client
+        Contact.objects.create(
+            client=order.client,  # Link the contact to the order's client
+            reason=Contact.ReasonChoices.SALES_OFFER,  # Set the reason to "Sales-offer"
+            description=f"Order #{order.id} was sent to the client.",  # Description with the order number
+            contact_date=now(),  # Automatically set to the current date and time
+            user=self.request.user.userprofile,  # Assuming UserProfile is linked to the user
+        )
 
         # Redirect to the Order Summary View after the order is created
         return HttpResponseRedirect(
@@ -201,6 +211,15 @@ class OrderConfirmView(generic.View):
             order.status = "Accepted"
             order.save()
             messages.success(request, "You have accepted the offer.")
+
+            # Create a Contact instance for follow-up
+            Contact.objects.create(
+                client=order.client,  # Link the contact to the order's client
+                reason=Contact.ReasonChoices.FOLLOW_UP,  # Set reason to "Follow-up"
+                description=f"Order #{order.id} was accepted.",  # Description mentioning acceptance
+                contact_date=now(),  # Automatically set to the current date and time
+                user=request.user.userprofile,  # Assuming the user has a UserProfile
+            )
         elif action == "deny":
             # Deny the offer and delete the order
             order.delete()

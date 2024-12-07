@@ -24,7 +24,7 @@ urlpatterns = [
         name="product-sales-detail",
     ),
     path(
-        "order/<int:order_id>/confirm/",
+        "<int:order_id>/confirm/",
         views.OrderConfirmView.as_view(),
         name="order_confirm",
     ),

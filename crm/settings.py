@@ -139,7 +139,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "leads.User"
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 
 LOGIN_REDIRECT_URL = "/leads"
 
@@ -148,3 +148,9 @@ LOGOUT_REDIRECT_URL = "/"
 CRISPY_ALLOWED_TEMPLATE_PACKS = "tailwind"
 
 CRISPY_TEMPLATE_PACK = "tailwind"
+
+EMAIL_HOST = "smtp.gmail.com"  # or another SMTP server
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "uchodzcaa@gmail.com"  # Replace with your email
+EMAIL_HOST_PASSWORD = "jehhepubnjuyivqa"  # Replace with your email password

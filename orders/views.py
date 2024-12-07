@@ -12,6 +12,7 @@ from django.http import HttpResponseRedirect
 from django.utils.http import urlencode
 from django.contrib.sites.shortcuts import get_current_site
 import uuid
+from django.core.mail import send_mail
 
 
 class OrderListView(generic.ListView):
@@ -125,26 +126,26 @@ class OrderSummaryView(LoginRequiredMixin, generic.DetailView):
             order.save()
 
             # # Send email to the client with a link to accept or deny
-            # subject = f"Offer for Order #{order.id}"
-            # message = f"""
-            #     Dear {order.client.name},
+            subject = f"Offer for Order #{order.id}"
+            message = f"""
+                Dear {order.client.first_name},
 
-            #     An offer has been made for your order #{order.id}. To review and either accept or deny the offer, please click the link below:
+                An offer has been made for your order #{order.id}. To review and either accept or deny the offer, please click the link below:
 
-            #     {self.get_order_confirmation_url(order, token)}
+                {self.get_order_confirmation_url(order, token)}
 
-            #     If you have any questions, please contact us.
+                If you have any questions, please contact us.
 
-            #     Best regards,
-            #     Your Company Name
-            # """
-            # send_mail(
-            #     subject,
-            #     message,
-            #     'from@example.com',  # Replace with your email
-            #     [order.client.email],
-            #     fail_silently=False,
-            # )
+                Best regards,
+                Your Company Name
+            """
+            send_mail(
+                subject,
+                message,
+                "from@example.com",  # Replace with your email
+                [order.client.email],
+                fail_silently=False,
+            )
             # Instead of sending an email, print the link to the console
             offer_url = self.get_order_confirmation_url(order, token)
             print(f"Mock email sent to {order.client.email} with the link: {offer_url}")

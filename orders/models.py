@@ -105,6 +105,16 @@ class Order(models.Model):
         ],
         default="Pending",
     )
+    payment_status = models.CharField(
+        max_length=20,
+        choices=[
+            ("Pending", "Pending"),
+            ("Paid", "Paid"),
+            ("Failed", "Failed"),
+        ],
+        default="Pending",
+    )
+    payment_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
 
     @property
     def total_price(self):

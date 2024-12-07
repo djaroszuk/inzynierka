@@ -8,6 +8,8 @@ from .forms import ClientForm, ContactForm, ClientSearchForm
 from django.db.models import Q
 from orders.models import Order
 from orders.forms import StatisticsFilterForm
+from datetime import timedelta
+from django.utils import timezone
 
 
 class ClientListView(LoginRequiredMixin, generic.ListView):
@@ -18,11 +20,33 @@ class ClientListView(LoginRequiredMixin, generic.ListView):
     def get_queryset(self):
         """Return a list of clients filtered by the search query."""
         queryset = Client.objects.all()
+
         query = self.request.GET.get("q")
         if query:
             queryset = queryset.filter(
                 Q(client_number__icontains=query)  # Case-insensitive search
             )
+
+        # Filter by Important Clients (checkbox)
+        if self.request.GET.get("important"):
+            queryset = queryset.filter(
+                status="Important"
+            )  # Assuming `status` is used to mark clients as important
+
+        # Filter by Last Sales Offer Contact (days ago)
+        last_contacted_days = self.request.GET.get("last_contacted")
+        if last_contacted_days:
+            try:
+                days = int(last_contacted_days)
+                cutoff_date = timezone.now() - timedelta(days=days)
+                queryset = queryset.filter(
+                    contacts__reason=Contact.ReasonChoices.SALES_OFFER,
+                    contacts__contact_date__lte=cutoff_date,
+                ).distinct()
+            except ValueError:
+                # If the value is not a valid integer, just ignore the filter
+                pass
+
         return queryset
 
     def get_context_data(self, **kwargs):

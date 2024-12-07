@@ -32,3 +32,18 @@ class ClientSearchForm(forms.Form):
             }
         ),
     )
+    important = forms.BooleanField(
+        label="Important Clients Only",
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "mr-2"}),
+    )
+    last_contacted = forms.IntegerField(
+        label="Last Sales Offer Contact (Days Ago)",
+        required=False,
+        widget=forms.NumberInput(
+            attrs={
+                "class": "border rounded px-4 py-2 text-gray-700",
+                "placeholder": "Enter days ago",
+            }
+        ),
+    )

@@ -43,6 +43,24 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
         "client"
     ]  # Only client field in the form (this can be pre-filled if needed)
 
+    def get_initial(self):
+        """Set the initial value for the client field."""
+        initial = super().get_initial()
+        client_number = self.request.GET.get(
+            "client_number"
+        )  # Fetch client_number from query parameter
+        if client_number:
+            try:
+                # Retrieve the client using client_number
+                client = Client.objects.get(client_number=client_number)
+                initial["client"] = client  # Set the initial client
+            except Client.DoesNotExist:
+                messages.warning(
+                    self.request,
+                    "Invalid client number provided. Please choose a valid client.",
+                )
+        return initial
+
     def get_context_data(self, **kwargs):
         """Add the list of products to the context."""
         context = super().get_context_data(**kwargs)
@@ -241,6 +259,14 @@ class ClientOrdersView(generic.ListView):
 
         # Filter orders by the client
         return Order.objects.filter(client=client)
+
+    def get_context_data(self, **kwargs):
+        # Add client information to the context for use in the template
+        context = super().get_context_data(**kwargs)
+        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
+        context["client"] = client  # Add the client object to the context
+        context["client_number"] = client.client_number  # Add client_number explicitly
+        return context
 
 
 class OrderStatisticsView(generic.TemplateView):

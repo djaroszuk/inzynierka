@@ -11,6 +11,13 @@
             <!-- Render the Search Form -->
             <form method="get" action="" class="flex">
                 {{ form.q }}
+                <div class="ml-2">
+                    {{ form.important }} Important Clients Only
+                </div>
+                <div class="ml-2">
+                    {{ form.last_contacted }}
+                    <span>Last Sales Offer Contact (Days Ago)</span>
+                </div>
                 <button type="submit" class="ml-2 px-4 py-2 bg-indigo-500 text-white rounded">
                     Search
                 </button>
@@ -32,7 +39,8 @@
                             {{ client.first_name }} {{ client.last_name }}
                         </h2>
                         <p class="leading-relaxed text-base overflow-hidden max-h-12">
-                            Client number: {{ client.client_number }}
+                            Client number: {{ client.client_number }}<br>
+                            Client status: {{ client.status }}
                         </p>
                         <a href="{% url 'clients:client-detail' client.client_number %}" class="mt-3 text-indigo-500 inline-flex items-center">
                             View this client

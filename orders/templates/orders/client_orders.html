@@ -22,5 +22,5 @@
         {% endfor %}
     </tbody>
 </table>
-<a href="{% url 'orders:order-create' %}">Create New Order</a>
+<a href="{% url 'orders:order-create' %}?client_number={{ client_number }}">Create New Order</a>
 {% endblock %}

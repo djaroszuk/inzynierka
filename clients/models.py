@@ -5,6 +5,10 @@ from django.utils.translation import gettext_lazy as _
 
 
 class Client(models.Model):
+    class StatusChoices(models.TextChoices):
+        REGULAR = "Regular", _("Regular")
+        IMPORTANT = "Important", _("Important")
+
     first_name = models.CharField(max_length=20)
     last_name = models.CharField(max_length=20)
     age = models.IntegerField()
@@ -27,10 +31,25 @@ class Client(models.Model):
     # Automatycznie generowany numer klienta
     client_number = models.CharField(max_length=20, unique=True, blank=True)
 
+    # Client status
+    status = models.CharField(
+        max_length=20,
+        choices=StatusChoices.choices,
+        default=StatusChoices.REGULAR,
+    )
+
     def generate_client_number(self):
         """Generuje unikalny numer klienta złożony tylko z cyfr."""
         length = 8  # długość numeru klienta
         return "".join(random.choices("0123456789", k=length))
+
+    def update_status(self):
+        """Updates client status to 'Important' if they exceed a threshold of orders."""
+        threshold = 2  # Number of orders to qualify as 'Important'
+        if self.orders.filter(status="Accepted").count() > threshold:
+            self.status = self.StatusChoices.IMPORTANT
+        else:
+            self.status = self.StatusChoices.REGULAR
 
     def save(self, *args, **kwargs):
         """Przypisuje numer klienta przed zapisaniem obiektu, jeśli jeszcze nie istnieje."""
@@ -56,9 +75,10 @@ class Contact(models.Model):
     reason = models.CharField(max_length=20, choices=ReasonChoices.choices)
     description = models.TextField(blank=True, null=True)
     contact_date = models.DateTimeField(auto_now_add=True)
-    agent = models.ForeignKey(
-        "leads.Agent", null=True, blank=True, on_delete=models.SET_NULL
+    user = models.ForeignKey(
+        "leads.UserProfile", null=True, blank=True, on_delete=models.SET_NULL
     )
 
     def __str__(self):
-        return f"Contact with {self.client.first_name} ({self.reason}) by {self.agent.user.username}"
+        user_name = self.user.user.username if self.user else "No User"
+        return f"Contact with {self.client.first_name} ({self.reason}) by {user_name}"

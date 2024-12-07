@@ -5,6 +5,7 @@
     <div class="container px-5 py-24 mx-auto">
         <div class="flex flex-col text-center w-full mb-20">
             <h1 class="sm:text-3xl text-2xl font-medium title-font text-gray-900">LEADS</h1>
+            <div class="py-2 border-t border-gray-300 mt-3"></div>
 
             <div class="flex justify-center mt-4 space-x-4">
                 <a class="text-gray-500 hover:text-blue-500" href="{% url 'leads:category-list' %}">
@@ -24,7 +25,7 @@
                             <div class="flex items-center space-x-4">
                                 <label for="category" class="font-medium">Filter by Category:</label>
                                 {{ form.category }}
-                                <button type="submit" class="bg-blue-500 text-white py-2 px-4 rounded">Apply Filter</button>
+                                <button type="submit" class="bg-indigo-500 text-white py-2 px-4 rounded">Apply Filter</button>
                             </div>
                         </form>
 

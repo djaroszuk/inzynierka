@@ -118,7 +118,8 @@ class ContactCreateView(LoginRequiredMixin, generic.CreateView):
         client_number = self.kwargs.get("client_number")
         client = get_object_or_404(Client, client_number=client_number)
         form.instance.client = client
-        form.instance.agent = self.request.user.agent
+        user_profile = self.request.user.userprofile
+        form.instance.user = user_profile
         return super().form_valid(form)
 
     def get_success_url(self):

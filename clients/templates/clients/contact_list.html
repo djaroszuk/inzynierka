@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+<a href="{% url 'clients:client-detail' client.client_number %}">Go back to client</a>
 <h2>Contact History for {{ client.first_name }} {{ client.last_name }}</h2>
 
 {% if contacts.exists %}
@@ -10,7 +11,7 @@
             <th>Date</th>
             <th>Reason</th>
             <th>Description</th>
-            <th>Agent</th>
+            <th>Made by</th>
         </tr>
     </thead>
     <tbody>
@@ -19,7 +20,7 @@
             <td>{{ contact.contact_date }}</td>
             <td>{{ contact.get_reason_display }}</td>
             <td>{{ contact.description }}</td>
-            <td>{{ contact.agent }}</td>
+            <td>{{ contact.user.user.username }}</td>
         </tr>
         {% endfor %}
     </tbody>

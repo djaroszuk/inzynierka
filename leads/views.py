@@ -1,5 +1,4 @@
 import openpyxl
-from django.core.mail import send_mail
 from django.contrib import messages
 from django.db.models import Count
 from django.urls import reverse_lazy
@@ -26,44 +25,6 @@ class SignupView(generic.CreateView):
         return reverse("login")
 
 
-class LeadCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
-    model = Lead
-    form_class = LeadForm
-    template_name = "leads/lead_create.html"
-    success_url = reverse_lazy("leads:lead-list")
-
-    def form_valid(self, form):
-        lead = form.save(commit=False)
-        lead.organisation = self.request.user.userprofile
-
-        # Fetch the "new" category for the organization
-        try:
-            new_category = Category.objects.get(
-                name="new", organisation=self.request.user.userprofile
-            )
-            lead.category = new_category  # Assign the "new" category
-        except Category.DoesNotExist:
-            messages.error(
-                self.request,
-                "The 'new' category is not available for this organization.",
-            )
-            return self.form_invalid(form)
-
-        lead.save()
-
-        # Send email notification
-        send_mail(
-            subject="A lead has been created",
-            message="Go to the site to see the new lead",
-            from_email="test@test.com",
-            recipient_list=["test2@test.com"],
-        )
-
-        # Success message
-        messages.success(self.request, "You have successfully created a lead")
-        return super(LeadCreateView, self).form_valid(form)
-
-
 class LeadListView(LoginRequiredMixin, generic.ListView):
     model = Lead
     template_name = "leads/lead-list.html"
@@ -72,14 +33,10 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
     def get_queryset(self):
         user = self.request.user
         category_name = self.request.GET.get("category", "new")
-
-        # Filter leads by organization and (for agents) by the agent itself
-        queryset = Lead.objects.filter(organisation=user.userprofile)
         if user.is_organisor:
-            queryset = Lead.objects.filter(organisation=user.userprofile)
+            queryset = Lead.objects.all()
         else:
-            queryset = Lead.objects.filter(organisation=user.agent.organisation)
-            queryset = queryset.filter(agent__user=user)
+            queryset = Lead.objects.filter(agent__user=user)
 
         # Apply category filter
         if category_name:
@@ -94,14 +51,9 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
         # Category filter form
         context["form"] = CategoryFilterForm(self.request.GET)
 
-        # All categories for the user's organization
-        context["categories"] = Category.objects.filter(organisation=user.userprofile)
-
-        # Optionally include unassigned leads for the organizer
+        # If the user is an organisor, show unassigned leads
         if user.is_organisor:
-            unassigned_leads = Lead.objects.filter(
-                organisation=user.userprofile, agent__isnull=True
-            )
+            unassigned_leads = Lead.objects.filter(agent__isnull=True)
             context.update({"unassigned_leads": unassigned_leads})
 
         return context
@@ -111,11 +63,7 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
         if not user.is_organisor:  # Only agents can take a lead
             # Find the oldest unassigned lead for the agent's organization
             oldest_unassigned_lead = (
-                Lead.objects.filter(
-                    organisation=user.agent.organisation, agent__isnull=True
-                )
-                .order_by("date_created")
-                .first()
+                Lead.objects.filter(agent__isnull=True).order_by("date_created").first()
             )
 
             if oldest_unassigned_lead:
@@ -134,6 +82,29 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
         return redirect("leads:lead-list")
 
 
+class LeadCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
+    model = Lead
+    form_class = LeadForm
+    template_name = "leads/lead_create.html"
+    success_url = reverse_lazy("leads:lead-list")
+
+    def form_valid(self, form):
+        lead = form.save(commit=False)
+
+        # Get the default "new" category for the current organisation
+        new_category = Category.objects.get(name="new")
+
+        # Assign the "new" category to the lead
+        lead.category = new_category
+
+        # Save the lead without assigning to an agent or organisation initially
+        lead.save()
+
+        # Success message
+        messages.success(self.request, "You have successfully created a lead")
+        return super().form_valid(form)
+
+
 class LeadDetailView(LoginRequiredMixin, generic.DetailView):
     model = Lead
     template_name = "leads/lead_detail.html"
@@ -141,11 +112,11 @@ class LeadDetailView(LoginRequiredMixin, generic.DetailView):
 
     def get_queryset(self):
         user = self.request.user
+
         if user.is_organisor:
-            queryset = Lead.objects.filter(organisation=user.userprofile)
+            queryset = Lead.objects.all()
         else:
-            queryset = Lead.objects.filter(organisation=user.agent.organisation)
-            queryset = queryset.filter(agent__user=user)
+            queryset = Lead.objects.filter(agent__user=user)
         return queryset
 
 
@@ -160,10 +131,9 @@ class LeadUpdateView(LoginRequiredMixin, generic.UpdateView):
     def get_queryset(self):
         user = self.request.user
         if user.is_organisor:
-            queryset = Lead.objects.filter(organisation=user.userprofile)
+            queryset = Lead.objects.all()
         else:
-            queryset = Lead.objects.filter(organisation=user.agent.organisation)
-            queryset = queryset.filter(agent__user=user)
+            queryset = Lead.objects.filter(agent__user=user)
         return queryset
 
 
@@ -177,10 +147,9 @@ class LeadDeleteView(LoginRequiredMixin, generic.DeleteView):
     def get_queryset(self):
         user = self.request.user
         if user.is_organisor:
-            queryset = Lead.objects.filter(organisation=user.userprofile)
+            queryset = Lead.objects.all()
         else:
-            queryset = Lead.objects.filter(organisation=user.agent.organisation)
-            queryset = queryset.filter(agent__user=user)
+            queryset = Lead.objects.filter(agent__user=user)
         return queryset
 
 
@@ -222,9 +191,9 @@ class CategoryListView(LoginRequiredMixin, generic.ListView):
 
         # Filter leads based on user type (organisor or agent)
         if user.is_organisor:
-            queryset = Lead.objects.filter(organisation=user.userprofile)
+            queryset = Lead.objects.all()
         else:
-            queryset = Lead.objects.filter(organisation=user.agent.organisation)
+            queryset = Lead.objects.filter(agent__user=user)
 
         # Add unassigned lead count to the context
         context.update(
@@ -233,14 +202,7 @@ class CategoryListView(LoginRequiredMixin, generic.ListView):
         return context
 
     def get_queryset(self):
-        user = self.request.user
-
-        # Get categories based on user type (organisor or agent)
-        if user.is_organisor:
-            queryset = Category.objects.filter(organisation=user.userprofile)
-        else:
-            queryset = Category.objects.filter(organisation=user.agent.organisation)
-
+        queryset = Category.objects.all()
         # Annotate categories with the count of associated leads
         return queryset.annotate(lead_count=Count("leads"))
 
@@ -258,11 +220,11 @@ class CategoryDetailView(LoginRequiredMixin, generic.DetailView):
     def get_queryset(self):
         user = self.request.user
         if user.is_organisor:
-            queryset = Category.objects.filter(
-                organisation=user.userprofile,
-            )
+            queryset = Category.objects.all()  # Get all categories for the organiser
         else:
-            queryset = Category.objects.filter(organisation=user.agent.organisation)
+            queryset = Category.objects.filter(
+                lead__agent__user=user
+            )  # Get categories for agent
         return queryset
 
 
@@ -274,10 +236,10 @@ class LeadCategoryUpdateView(LoginRequiredMixin, generic.UpdateView):
     def get_queryset(self):
         user = self.request.user
         if user.is_organisor:
-            queryset = Lead.objects.filter(organisation=user.userprofile)
+            queryset = Lead.objects.all()  # All leads for the organiser
         else:
-            queryset = Lead.objects.filter(organisation=user.agent.organisation)
-            queryset = queryset.filter(agent__user=user)
+            # Agent leads filtered by the agent's profile
+            queryset = Lead.objects.filter(agent__user=user)
         return queryset
 
     def get_success_url(self):
@@ -304,9 +266,7 @@ class LeadUploadView(LoginRequiredMixin, View):
                 skipped_rows = []  # Track rows with missing fields
                 duplicate_emails = []  # Track duplicate email entries
                 created_leads = 0  # Count successfully created leads
-                new_category = Category.objects.get(
-                    name="new", organisation=request.user.userprofile
-                )
+                new_category = Category.objects.get(name="new")
 
                 # Process each row in the sheet (skip header row)
                 for idx, row in enumerate(
@@ -320,9 +280,7 @@ class LeadUploadView(LoginRequiredMixin, View):
                         continue
 
                     # Check for duplicates
-                    if Lead.objects.filter(
-                        email=email, organisation=request.user.userprofile
-                    ).exists():
+                    if Lead.objects.filter(email=email).exists():
                         duplicate_emails.append(email)
                         continue
 
@@ -332,7 +290,6 @@ class LeadUploadView(LoginRequiredMixin, View):
                         last_name=last_name,
                         age=int(age),
                         email=email,
-                        organisation=request.user.userprofile,
                         category=new_category,  # Assign the "new" category
                     )
                     created_leads += 1

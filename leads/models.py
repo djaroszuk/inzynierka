@@ -3,6 +3,8 @@ from django.db.models.signals import post_save
 from django.contrib.auth.models import AbstractUser
 from django.dispatch import receiver
 from clients.models import Client
+from django.db.models.signals import post_migrate
+from django.apps import apps
 
 
 class User(AbstractUser):
@@ -17,13 +19,50 @@ class UserProfile(models.Model):
         return self.user.username
 
 
+class Agent(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.user.email
+
+    def get_order_stats(self):
+        """
+        Calculate order stats for the agent.
+        """
+        orders = self.orders.all()
+        order_count = orders.count()
+        total_value = sum(order.total_price for order in orders)
+        average_order_value = total_value / order_count if order_count > 0 else 0
+        return {
+            "order_count": order_count,
+            "total_value": total_value,
+            "average_order_value": average_order_value,
+        }
+
+    def get_lead_conversion_count(self):
+        """
+        Calculate the number of leads converted by the agent.
+        """
+        return Lead.objects.filter(agent=self, is_converted=True).count()
+
+    def get_stats(self):
+        """
+        Aggregate all stats for the agent.
+        """
+        order_stats = self.get_order_stats()
+        lead_conversion_count = self.get_lead_conversion_count()
+        return {
+            **order_stats,
+            "lead_conversion_count": lead_conversion_count,
+        }
+
+
 class Lead(models.Model):
     first_name = models.CharField(max_length=20)
     last_name = models.CharField(max_length=20)
     age = models.IntegerField(default=0)
     email = models.EmailField(unique=True, blank=True, null=True)
     phone_number = models.CharField(max_length=9, blank=True, null=True)
-    organisation = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     agent = models.ForeignKey("Agent", null=True, blank=True, on_delete=models.SET_NULL)
     category = models.ForeignKey(
         "Category",
@@ -34,13 +73,6 @@ class Lead(models.Model):
     )
     is_converted = models.BooleanField(default=False)
     date_created = models.DateTimeField(auto_now_add=True)
-    client = models.OneToOneField(
-        "clients.Client",
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="lead",
-    )
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -55,17 +87,8 @@ class Lead(models.Model):
         self.save()
 
 
-class Agent(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    organisation = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return self.user.email
-
-
 class Category(models.Model):
     name = models.CharField(max_length=30)
-    organisation = models.ForeignKey("leads.UserProfile", on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
@@ -99,14 +122,12 @@ def create_client_from_lead(sender, instance, created, **kwargs):
         instance.save()
 
 
-@receiver(post_save, sender=UserProfile)
-def create_default_categories(sender, instance, created, **kwargs):
-    """Create default categories when a new organizer (UserProfile) is created."""
-    if created and instance.user.is_organisor:
-        # Default categories to create
-        default_categories = ["new", "sale", "no sale"]
+def create_default_categories(sender, **kwargs):
+    """Create global categories."""
+    Category = apps.get_model("leads", "Category")
+    default_categories = ["new", "sale", "no sale"]
+    for category_name in default_categories:
+        Category.objects.get_or_create(name=category_name)
 
-        # Create the categories for the associated UserProfile (team)
-        for category_name in default_categories:
-            # Only create the category if it doesn't already exist for this team
-            Category.objects.get_or_create(name=category_name, organisation=instance)
+
+post_migrate.connect(create_default_categories)

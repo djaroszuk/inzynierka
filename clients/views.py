@@ -67,23 +67,6 @@ class ClientDetailView(LoginRequiredMixin, generic.DetailView):
         return get_object_or_404(Client, client_number=client_number)
 
 
-class ClientCreateView(LoginRequiredMixin, generic.CreateView):
-    model = Client
-    form_class = ClientForm
-    template_name = "clients/client_create.html"
-
-    def form_valid(self, form):
-        """Ustawia organizację i agenta jako domyślną dla użytkownika logującego się."""
-        # Set the organisation of the client to the organisation of the logged-in user's profile
-        form.instance.organisation = self.request.user.userprofile.organisation
-
-        # Set the agent of the client to the logged-in user’s agent (assuming the agent is linked to the user)
-        form.instance.agent = self.request.user.agent
-
-        # Call the parent class's form_valid method to complete the form saving process
-        return super().form_valid(form)
-
-
 class ClientUpdateView(LoginRequiredMixin, generic.UpdateView):
     model = Client
     form_class = ClientForm

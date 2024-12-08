@@ -5,6 +5,7 @@ from .views import (
     AgentDetailView,
     AgentUpdateView,
     AgentDeleteView,
+    AgentStatsView,
 )
 
 app_name = "agents"
@@ -15,4 +16,5 @@ urlpatterns = [
     path("<int:pk>/", AgentDetailView.as_view(), name="agent-detail"),
     path("<int:pk>/update/", AgentUpdateView.as_view(), name="agent-update"),
     path("<int:pk>/delete/", AgentDeleteView.as_view(), name="agent-delete"),
+    path("<int:pk>/stats/", AgentStatsView.as_view(), name="agent-stats"),
 ]

@@ -3,7 +3,6 @@
 
 {% block content %}
 <div class ="max-w-lg mx-auto">
-    <a href="{% url 'leads:lead-upload'%}">Add many leads from Excel file</a>
     <form method="post">
         {% csrf_token %}
         {{form|crispy}}

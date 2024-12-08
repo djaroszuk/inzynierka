@@ -12,8 +12,7 @@ class AgentListView(OrganisorAndLoginRequiredMixin, generic.ListView):
     context_object_name = "agents"
 
     def get_queryset(self):
-        organisation = self.request.user.userprofile
-        return Agent.objects.filter(organisation=organisation)
+        return Agent.objects.all
 
 
 class AgentCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
@@ -29,7 +28,7 @@ class AgentCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
         user.is_organisor = False
         user.set_password(f"{random.randint(0, 100000)}")
         user.save()
-        Agent.objects.create(user=user, organisation=self.request.user.userprofile)
+        Agent.objects.create(user=user)
         send_mail(
             subject="TODO.",
             message="TODO.",
@@ -44,8 +43,7 @@ class AgentDetailView(OrganisorAndLoginRequiredMixin, generic.DetailView):
     context_object_name = "agent"
 
     def get_queryset(self):
-        organisation = self.request.user.userprofile
-        return Agent.objects.filter(organisation=organisation)
+        return Agent.objects.all()
 
 
 class AgentUpdateView(OrganisorAndLoginRequiredMixin, generic.UpdateView):
@@ -56,8 +54,7 @@ class AgentUpdateView(OrganisorAndLoginRequiredMixin, generic.UpdateView):
         return reverse("agents:agent-list")
 
     def get_queryset(self):
-        organisation = self.request.user.userprofile
-        return Agent.objects.filter(organisation=organisation)
+        return Agent.objects.all()
 
 
 class AgentDeleteView(OrganisorAndLoginRequiredMixin, generic.DeleteView):
@@ -65,8 +62,19 @@ class AgentDeleteView(OrganisorAndLoginRequiredMixin, generic.DeleteView):
     context_object_name = "agent"
 
     def get_queryset(self):
-        organisation = self.request.user.userprofile
-        return Agent.objects.filter(organisation=organisation)
+        return Agent.objects.all()
 
     def get_success_url(self):
         return reverse("agents:agent-list")
+
+
+class AgentStatsView(generic.DetailView):
+    model = Agent
+    template_name = "agents/agent_stats.html"
+    context_object_name = "agent"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        agent = self.object
+        context["stats"] = agent.get_stats()  # Add stats to the context
+        return context

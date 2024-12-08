@@ -3,7 +3,6 @@ from django.urls import path
 from .views import (
     ClientListView,
     ClientDetailView,
-    ClientCreateView,
     ClientUpdateView,
     ClientDeleteView,
     ContactListView,
@@ -16,7 +15,6 @@ app_name = "clients"
 urlpatterns = [
     path("", ClientListView.as_view(), name="client-list"),
     path("<str:client_number>/", ClientDetailView.as_view(), name="client-detail"),
-    path("create/", ClientCreateView.as_view(), name="client-create"),
     path(
         "<str:client_number>/update/", ClientUpdateView.as_view(), name="client-update"
     ),

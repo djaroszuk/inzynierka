@@ -94,6 +94,13 @@ class OrderManager(models.Manager):
 class Order(models.Model):
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="orders")
     date_created = models.DateTimeField(auto_now_add=True)
+    agent = models.ForeignKey(
+        "leads.Agent",
+        on_delete=models.CASCADE,
+        related_name="orders",
+        null=True,
+        blank=True,
+    )  # Add this
     offer_token = models.CharField(max_length=255, blank=True, null=True, unique=True)
     objects = OrderManager()
     status = models.CharField(
@@ -105,16 +112,6 @@ class Order(models.Model):
         ],
         default="Pending",
     )
-    payment_status = models.CharField(
-        max_length=20,
-        choices=[
-            ("Pending", "Pending"),
-            ("Paid", "Paid"),
-            ("Failed", "Failed"),
-        ],
-        default="Pending",
-    )
-    payment_id = models.CharField(max_length=255, blank=True, null=True, unique=True)
 
     @property
     def total_price(self):

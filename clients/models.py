@@ -16,18 +16,8 @@ class Client(models.Model):
         unique=True, blank=True, null=True
     )  # Copy email from Lead
     phone_number = models.CharField(max_length=15, blank=True, null=True)
-
-    # Powiązanie z organizacją i agentem z `leads`
-    organisation = models.ForeignKey(
-        "leads.UserProfile", null=True, blank=True, on_delete=models.CASCADE
-    )
-    agent = models.ForeignKey(
-        "leads.Agent", null=True, blank=True, on_delete=models.SET_NULL
-    )
-
     # Data konwersji leadu na klienta
     converted_date = models.DateTimeField(auto_now_add=True)
-
     # Automatycznie generowany numer klienta
     client_number = models.CharField(max_length=20, unique=True, blank=True)
 

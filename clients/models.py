@@ -2,6 +2,7 @@
 import random
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.db.models import Sum, F
 
 
 class Client(models.Model):
@@ -16,9 +17,7 @@ class Client(models.Model):
         unique=True, blank=True, null=True
     )  # Copy email from Lead
     phone_number = models.CharField(max_length=15, blank=True, null=True)
-    # Data konwersji leadu na klienta
     converted_date = models.DateTimeField(auto_now_add=True)
-    # Automatycznie generowany numer klienta
     client_number = models.CharField(max_length=20, unique=True, blank=True)
 
     # Client status
@@ -29,23 +28,64 @@ class Client(models.Model):
     )
 
     def generate_client_number(self):
-        """Generuje unikalny numer klienta złożony tylko z cyfr."""
-        length = 8  # długość numeru klienta
+        """Generates a unique client number composed of digits."""
+        length = 8  # Length of the client number
         return "".join(random.choices("0123456789", k=length))
 
     def update_status(self):
-        """Updates client status to 'Important' if they exceed a threshold of orders."""
-        threshold = 2  # Number of orders to qualify as 'Important'
+        """Updates client status to 'Important' if they exceed a threshold of accepted orders."""
+        threshold = 2  # Number of accepted orders to qualify as 'Important'
         if self.orders.filter(status="Accepted").count() > threshold:
             self.status = self.StatusChoices.IMPORTANT
         else:
             self.status = self.StatusChoices.REGULAR
 
     def save(self, *args, **kwargs):
-        """Przypisuje numer klienta przed zapisaniem obiektu, jeśli jeszcze nie istnieje."""
+        """Assigns a client number before saving if it doesn't already exist."""
         if not self.client_number:
             self.client_number = self.generate_client_number()
         super().save(*args, **kwargs)
+
+    def total_revenue(self, start_date=None, end_date=None):
+        """Calculate total revenue for this client, considering only accepted orders."""
+        queryset = self.orders.filter(status="Accepted")
+        if start_date:
+            queryset = queryset.filter(date_created__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(date_created__lte=end_date)
+
+        return (
+            queryset.aggregate(
+                total=Sum(
+                    F("order_products__product_price") * F("order_products__quantity")
+                )
+            )["total"]
+            or 0
+        )
+
+    def total_products_sold(self, start_date=None, end_date=None):
+        """Calculate total products sold for this client, considering only accepted orders."""
+        queryset = self.orders.filter(status="Accepted")
+        if start_date:
+            queryset = queryset.filter(date_created__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(date_created__lte=end_date)
+
+        return queryset.aggregate(total=Sum("order_products__quantity"))["total"] or 0
+
+    def order_statistics(self, start_date=None, end_date=None):
+        """Calculate order-related statistics for this client."""
+        queryset = self.orders.filter(status="Accepted")
+        if start_date:
+            queryset = queryset.filter(date_created__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(date_created__lte=end_date)
+
+        return {
+            "total_revenue": self.total_revenue(start_date, end_date),
+            "total_products_sold": self.total_products_sold(start_date, end_date),
+            "total_orders": queryset.count(),
+        }
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} - Client"

@@ -1,32 +1,47 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
 <section class="text-gray-600 body-font overflow-hidden">
     <div class="container px-5 py-24 mx-auto">
-        <div class="lg:w-4/5 mx-auto flex flex-wrap">
-            <div class="lg:w-1/2 w-full lg:pr-10 lg:py-6 mb-6 lg:mb-0">
-                <h2 class="text-sm title-font text-gray-500 tracking-widest">AGENT</h2>
-                <h1 class="text-gray-900 text-3xl title-font font-medium mb-4">{{ agent.user.username }}</h1>
-                <div class="flex mb-4">
-                    <a href="{% url 'agents:agent-detail' agent.pk %}" class="flex-grow border-b-2 border-gray-300 py-2 text-lg px-1">Description</a>
-                    <a class="flex-grow border-b-2 border-gray-300 py-2 text-lg px-1">TODO</a>
-                    <a href="{% url 'agents:agent-update' agent.pk %}" class="flex-grow text-indigo-500 border-b-2 border-indigo-500 py-2 text-lg px-1">Details</a>
-                </div>
-                <div>
-                    <h3 class="text-lg title-font text-gray-700">Statistics</h3>
-                    <ul class="list-disc pl-5 text-gray-700">
-                        <li><strong>Total Orders:</strong> {{ stats.order_count }}</li>
-                        <li><strong>Total Order Value:</strong> {{ stats.total_value }}</li>
-                        <li><strong>Average Order Value:</strong> {{ stats.average_order_value }}</li>
-                        <li><strong>Converted Leads:</strong> {{ stats.lead_conversion_count }}</li>
-                    </ul>
-                </div>
-                <a href="{% url 'agents:agent-delete' agent.pk %}" class="flex ml-auto text-white bg-indigo-500 border-0 py-2 px-6 focus:outline-none hover:bg-indigo-600 rounded">
-                    Delete
-                </a>
+        <div class="lg:w-4/5 mx-auto">
+            <h1 class="text-gray-900 text-3xl title-font font-medium mb-6">{{ agent.user.username }} - Statistics</h1>
+
+            <!-- Statistics Overview -->
+            <div class="mb-6">
+                <h2 class="text-lg font-medium text-gray-700 title-font mb-4">Overview</h2>
+                <ul class="list-disc pl-5 text-gray-700">
+                    <li><strong>Total Orders:</strong> {{ stats.order_count }}</li>
+                    <li><strong>Total Order Value:</strong> {{ stats.total_value|floatformat:2 }}</li>
+                    <li><strong>Average Order Value:</strong> {{ stats.average_order_value|floatformat:2 }}</li>
+                    <li><strong>Converted Leads (Sale):</strong> {{ stats.sale }}</li>
+                    <li><strong>Converted Leads (No Sale):</strong> {{ stats.no_sale }}</li>
+                </ul>
             </div>
-            <img alt="ecommerce" class="lg:w-1/2 w-full lg:h-auto h-64 object-cover object-center rounded" src="https://dummyimage.com/400x400">
+
+            <!-- Lead Conversion Chart -->
+            <div class="mb-10">
+                <h2 class="text-lg font-medium text-gray-700 title-font mb-4">Lead Conversion</h2>
+                <canvas id="leadConversionChart" width="400" height="200"></canvas>
+            </div>
+
+            <!-- Order Statistics Chart -->
+            <div class="mb-10">
+                <h2 class="text-lg font-medium text-gray-700 title-font mb-4">Order Statistics</h2>
+                <canvas id="orderStatsChart" width="400" height="200"></canvas>
+            </div>
         </div>
     </div>
 </section>
+
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Load the custom script -->
+<script src="{% static 'js/agent_stats.js' %}"></script>
+
+<!-- Embed stats data as a JSON string in a hidden DOM element -->
+<div id="chart-data"
+     data-lead-stats='{"sale": {{ stats.sale }}, "no_sale": {{ stats.no_sale }}}'
+     data-order-stats='{"order_count": {{ stats.order_count }}, "total_value": {{ stats.total_value }}, "average_value": {{ stats.average_order_value }}}'>
+</div>
 {% endblock content %}

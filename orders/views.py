@@ -14,6 +14,10 @@ from django.contrib.sites.shortcuts import get_current_site
 import uuid
 from django.core.mail import send_mail
 from django.utils.timezone import now
+from datetime import timedelta
+from django.db.models.functions import TruncDay
+from django.db.models import Count, Sum, F
+import json
 
 
 class OrderListView(generic.ListView):
@@ -103,6 +107,7 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
 
         # Create the order and save it
         order = form.save(commit=False)
+        order.agent = self.request.user.agent
         order.status = "Pending"  # Set status to "Pending" initially
         order.save()
 
@@ -240,8 +245,19 @@ class OrderConfirmView(generic.View):
             )
         elif action == "deny":
             # Deny the offer and delete the order
-            order.delete()
-            messages.success(request, "You have denied the offer.")
+            order.status = "Canceled"
+            order.save()
+            # Return the products to stock
+            for order_product in order.order_products.all():
+                product = order_product.product
+                product.stock_quantity += (
+                    order_product.quantity
+                )  # Increase the stock by the quantity ordered
+                product.save()  # Save the product with the updated stock
+
+            messages.success(
+                request, "You have denied the offer and the order has been canceled."
+            )
         else:
             messages.error(request, "Invalid action.")
 
@@ -316,3 +332,44 @@ class ProductSalesDetailView(generic.ListView):
     def get_queryset(self):
         # Get the total quantity of each product sold (snapshot of product name)
         return OrderProduct.get_product_sales()
+
+
+class DailyRevenueChartView(generic.TemplateView):
+    template_name = "orders/daily_revenue_chart.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Get the date range for the last 7 days
+        today = now().date()
+        start_date = today - timedelta(days=6)
+
+        # Query daily revenue and daily order count
+        orders = Order.objects.filter(status="Accepted")
+        orders = (
+            orders.filter(date_created__date__range=[start_date, today])
+            .annotate(day=TruncDay("date_created"))
+            .values("day")
+            .annotate(
+                total_revenue=Sum(
+                    F("order_products__product_price") * F("order_products__quantity")
+                ),
+                total_orders=Count("id"),  # Count orders for the day
+            )
+            .order_by("day")
+        )
+
+        # Prepare data for the chart
+        daily_revenue = [
+            {
+                "date": entry["day"].strftime("%Y-%m-%d"),
+                "total_revenue": float(entry["total_revenue"] or 0),
+                "total_orders": entry["total_orders"],
+            }
+            for entry in orders
+        ]
+
+        # Embed data into context
+        context["daily_revenue"] = json.dumps(daily_revenue)
+
+        return context

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<section class="text-gray-600 body-font overflow-hidden">
+    <div class="container px-5 py-24 mx-auto">
+        <div class="lg:w-4/5 mx-auto">
+            <h1 class="text-gray-900 text-3xl title-font font-medium mb-6">Daily Revenue (Last 7 Days)</h1>
+
+            <!-- Chart Section -->
+            <div class="mb-10">
+                <h2 class="text-lg font-medium text-gray-700 title-font mb-4">Revenue and Orders Trend</h2>
+                <canvas id="dailyRevenueChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Include custom script -->
+<script src="{% static 'js/daily_revenue_chart.js' %}"></script>
+
+<!-- Embed data as a JSON string in a hidden DOM element -->
+<div id="chart-data" data-daily-revenue='{{ daily_revenue|safe }}'></div>
+{% endblock content %}

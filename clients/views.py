@@ -6,7 +6,6 @@ from django.shortcuts import get_object_or_404
 from .models import Client, Contact
 from .forms import ClientForm, ContactForm, ClientSearchForm
 from django.db.models import Q
-from orders.models import Order
 from orders.forms import StatisticsFilterForm
 from datetime import timedelta
 from django.utils import timezone
@@ -143,10 +142,11 @@ class ClientStatisticsView(generic.TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
+        # Initialize the filter form with GET data if available
         form = StatisticsFilterForm(self.request.GET or None)
         context["form"] = form
 
-        # Initialize filtering variables
+        # Extract filtering variables
         start_datetime = None
         end_datetime = None
 
@@ -155,16 +155,16 @@ class ClientStatisticsView(generic.TemplateView):
             start_datetime = form.cleaned_data.get("start_datetime")
             end_datetime = form.cleaned_data.get("end_datetime")
 
-        # Get the client object based on the client_id from the URL
+        # Fetch the client based on the client_number from the URL
         client_number = self.kwargs.get("client_number")
         client = get_object_or_404(Client, client_number=client_number)
 
-        # Get client statistics from OrderManager
-        client_statistics = Order.objects.client_statistics(
-            client, start_date=start_datetime, end_date=end_datetime
+        # Fetch client statistics using the methods defined in the Client model
+        client_statistics = client.order_statistics(
+            start_date=start_datetime, end_date=end_datetime
         )
 
-        # Add client statistics to context
+        # Add the client and statistics to the context
         context["client"] = client
         context["client_statistics"] = client_statistics
 

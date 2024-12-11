@@ -33,4 +33,9 @@ urlpatterns = [
         views.DailyRevenueChartView.as_view(),
         name="daily-revenue-chart",
     ),
+    path(
+        "order-completion-rate/",
+        views.OrderCompletionRateView.as_view(),
+        name="order_completion_rate",
+    ),
 ]

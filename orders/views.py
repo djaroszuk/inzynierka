@@ -373,3 +373,30 @@ class DailyRevenueChartView(generic.TemplateView):
         context["daily_revenue"] = json.dumps(daily_revenue)
 
         return context
+
+
+class OrderCompletionRateView(generic.TemplateView):
+    template_name = "orders/order_completion_rate.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Calculate the number of accepted orders and total orders
+        total_orders = Order.objects.count()  # Total orders
+        accepted_orders = Order.objects.filter(
+            status="Accepted"
+        ).count()  # Accepted orders
+
+        # Calculate the completion rate as a percentage
+        if total_orders > 0:
+            completion_rate = (accepted_orders / total_orders) * 100
+        else:
+            completion_rate = 0
+
+        # Add the completion rate, accepted orders, and total orders to the context
+        context["completion_rate"] = completion_rate
+        context["accepted_orders"] = accepted_orders
+        context["remaining_orders"] = total_orders - accepted_orders
+        context["total_orders"] = total_orders
+
+        return context

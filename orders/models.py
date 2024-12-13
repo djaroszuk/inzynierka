@@ -94,17 +94,17 @@ class OrderProduct(models.Model):
         Order, on_delete=models.CASCADE, related_name="order_products"
     )
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
-    product_name = models.CharField(max_length=100)  # Save product name (snapshot)
+    product_name = models.CharField(max_length=100)  # Snapshot of product name
     product_price = models.DecimalField(
         max_digits=10, decimal_places=2
-    )  # Save product price (snapshot)
+    )  # Snapshot price
     quantity = models.PositiveIntegerField(default=1)
 
     def save(self, *args, **kwargs):
         """Snapshot product name and price when saving."""
-        if not self.product_name:
+        if not self.product_name and self.product:
             self.product_name = self.product.name
-        if not self.product_price:
+        if not self.product_price and self.product:
             self.product_price = self.product.price
         super().save(*args, **kwargs)
 
@@ -114,8 +114,11 @@ class OrderProduct(models.Model):
 
     @classmethod
     def get_product_sales(cls, start_date=None, end_date=None):
-        """Get the total quantity of each product sold."""
-        queryset = cls.objects.all()
+        """
+        Get the total quantity and total revenue of each product sold.
+        Optionally filter by date range.
+        """
+        queryset = cls.objects.filter(order__status="Accepted")
 
         # Apply date filters if provided
         if start_date:
@@ -123,10 +126,13 @@ class OrderProduct(models.Model):
         if end_date:
             queryset = queryset.filter(order__date_created__lte=end_date)
 
-        # Aggregate total quantity sold per product, and include product info using select_related
+        # Aggregate total quantity and total revenue sold per product
         return (
             queryset.values("product_name")
-            .annotate(total_quantity_sold=models.Sum("quantity"))
+            .annotate(
+                total_quantity_sold=Sum("quantity"),
+                total_revenue_sold=Sum(F("quantity") * F("product_price")),
+            )
             .order_by("-total_quantity_sold")
         )
 

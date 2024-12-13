@@ -6,6 +6,7 @@ from .models import Product
 from orders.models import OrderProduct
 from .forms import ProductForm, AddProductForm
 from clients.models import Client
+from orders.forms import StatisticsFilterForm
 
 
 class ProductListView(generic.ListView):
@@ -79,5 +80,53 @@ class ProductSalesDetailView(generic.ListView):
     context_object_name = "product_sales"
 
     def get_queryset(self):
-        # Get the total quantity of each product sold (snapshot of product name)
+        """Retrieve aggregated product sales data, optionally filtered by date."""
+        form = StatisticsFilterForm(self.request.GET or None)
+        if form.is_valid():
+            start_datetime = form.cleaned_data.get("start_datetime")
+            end_datetime = form.cleaned_data.get("end_datetime")
+            return OrderProduct.get_product_sales(
+                start_date=start_datetime, end_date=end_datetime
+            )
         return OrderProduct.get_product_sales()
+
+    def get_context_data(self, **kwargs):
+        """Add chart data to the context."""
+        context = super().get_context_data(**kwargs)
+
+        # Handle the filter form
+        form = StatisticsFilterForm(self.request.GET or None)
+        context["form"] = form
+
+        # Get filtered sales data
+        product_sales = self.get_queryset()
+
+        # Calculate total products sold and total revenue
+        total_quantity = sum(item["total_quantity_sold"] for item in product_sales)
+        total_revenue = sum(item["total_revenue_sold"] for item in product_sales)
+
+        if total_quantity == 0 or total_revenue == 0:
+            labels = []
+            quantity_data = []
+            revenue_data = []
+        else:
+            labels = [item["product_name"] for item in product_sales]
+            quantity_data = [
+                round((item["total_quantity_sold"] / total_quantity) * 100, 2)
+                for item in product_sales
+            ]
+            revenue_data = [
+                round((item["total_revenue_sold"] / total_revenue) * 100, 2)
+                for item in product_sales
+            ]
+
+        # **Convert Decimal to float**
+        quantity_data = [float(x) for x in quantity_data]
+        revenue_data = [float(x) for x in revenue_data]
+
+        # Pass raw data to the template; json_script will handle serialization
+        context["chart_labels"] = labels
+        context["chart_quantity_data"] = quantity_data
+        context["chart_revenue_data"] = revenue_data
+
+        return context

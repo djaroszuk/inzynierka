@@ -1,31 +1,87 @@
+<!-- your_app/templates/products/product_sales_detail.html -->
+
 {% extends "base.html" %}
+{% load static %} <!-- Do NOT load json_script as it's a built-in filter -->
 
 {% block content %}
-  <section class="text-gray-600 body-font">
-    <div class="container px-5 py-24 mx-auto">
-      <div class="flex flex-col text-center w-full mb-20">
-        <h1 class="sm:text-4xl text-3xl font-medium title-font mb-2 text-gray-900">Product Sales Details</h1>
-        <p class="lg:w-2/3 mx-auto leading-relaxed text-base">Details of total products sold</p>
-      </div>
-      <!-- Product Sales Table -->
-      <div class="lg:w-2/3 w-full mx-auto overflow-auto">
-        <table class="table-auto w-full text-left whitespace-no-wrap">
-          <thead>
+<section class="text-gray-600 body-font">
+  <div class="container px-5 py-24 mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col text-center w-full mb-20">
+      <h1 class="sm:text-4xl text-3xl font-medium title-font mb-2 text-gray-900">Product Sales Details</h1>
+      <p class="lg:w-2/3 mx-auto leading-relaxed text-base">Details of total products sold and their revenue contributions</p>
+    </div>
+
+    <!-- Date Filter Form (Optional) -->
+    {% if form %}
+    <form method="get" class="mb-6">
+        <div class="flex flex-wrap items-center space-x-4">
+            <div>
+                {{ form.start_datetime.label_tag }}<br>
+                {{ form.start_datetime }}
+            </div>
+            <div>
+                {{ form.end_datetime.label_tag }}<br>
+                {{ form.end_datetime }}
+            </div>
+            <div class="mt-4">
+                <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Filter</button>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+
+    <!-- Product Sales Table -->
+    <div class="lg:w-2/3 w-full mx-auto overflow-auto mb-10">
+      <table class="table-auto w-full text-left whitespace-no-wrap">
+        <thead>
+          <tr>
+            <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100 rounded-tl rounded-bl">Product</th>
+            <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">Total Quantity Sold</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sales in product_sales %}
             <tr>
-              <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100 rounded-tl rounded-bl">Product</th>
-              <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">Total Quantity Sold</th>
+              <td class="px-4 py-3">{{ sales.product_name }}</td>
+              <td class="px-4 py-3">{{ sales.total_quantity_sold }}</td>
             </tr>
-          </thead>
-          <tbody>
-            {% for sales in product_sales %}
-              <tr>
-                <td class="px-4 py-3">{{ sales.product_name }}</td>
-                <td class="px-4 py-3">{{ sales.total_quantity_sold }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+          {% empty %}
+            <tr>
+              <td class="px-4 py-3" colspan="2">No sales data available.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pie Charts Container -->
+    <div class="lg:w-2/3 w-full mx-auto">
+      <h2 class="text-xl font-medium text-gray-700 title-font mb-4">Product Sales and Revenue Distribution (%)</h2>
+
+      <!-- Quantity Sold Pie Chart -->
+      <div class="mb-8">
+        <h3 class="text-lg font-medium text-gray-700 mb-2">Quantity Sold (%)</h3>
+        <canvas id="quantityPieChart" width="400" height="400" aria-label="Quantity Sold Distribution" role="img"></canvas>
+      </div>
+
+      <!-- Revenue Contribution Pie Chart -->
+      <div>
+        <h3 class="text-lg font-medium text-gray-700 mb-2">Revenue Contribution (%)</h3>
+        <canvas id="revenuePieChart" width="400" height="400" aria-label="Revenue Contribution Distribution" role="img"></canvas>
       </div>
     </div>
-  </section>
+  </div>
+</section>
+
+<!-- Embed the chart data securely using json_script -->
+{{ chart_labels|json_script:"chart-labels" }}
+{{ chart_quantity_data|json_script:"chart-quantity" }}
+{{ chart_revenue_data|json_script:"chart-revenue" }}
+
+<!-- Include Chart.js from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Include the external JavaScript file -->
+<script src="{% static 'js/product_sales.js' %}"></script>
 {% endblock %}

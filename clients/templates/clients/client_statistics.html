@@ -12,7 +12,7 @@
   <!-- Display statistics -->
   <ul>
     <li><strong>Total Revenue:</strong> ${{ client_statistics.total_revenue }}</li>
-    <li><strong>Total Products Sold:</strong><a href="{% url 'orders:product-sales-detail' %}"> {{ client_statistics.total_products_sold }}</a></li>
+    <li><strong>Total Products Sold:</strong><a href="{% url 'products:product-sales-detail' %}"> {{ client_statistics.total_products_sold }}</a></li>
     <li><strong>Total Orders:</strong> {{ client_statistics.total_orders }}</li>
   </ul>
 </section>

@@ -19,11 +19,6 @@ urlpatterns = [
     ),
     path("statistics/", views.OrderStatisticsView.as_view(), name="order-statistics"),
     path(
-        "statistics/product_sales/",
-        views.ProductSalesDetailView.as_view(),
-        name="product-sales-detail",
-    ),
-    path(
         "<int:order_id>/confirm/",
         views.OrderConfirmView.as_view(),
         name="order_confirm",

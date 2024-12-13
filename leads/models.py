@@ -5,6 +5,9 @@ from django.dispatch import receiver
 from clients.models import Client
 from django.db.models.signals import post_migrate
 from django.apps import apps
+from django.db.models.functions import TruncDay
+from django.db.models import Count
+from django.utils.timezone import now, timedelta
 
 
 class User(AbstractUser):
@@ -46,34 +49,86 @@ class Agent(models.Model):
             "average_order_value": average_order_value,
         }
 
-    def get_lead_conversion_count(self):
+    def get_daily_order_data(self, days=7):
         """
-        Calculate the number of leads converted by the agent, grouped by category:
-        "sale", "no sale".
-        Exclude "new" category leads from the count.
+        Return a list of dictionaries containing 'date' and 'count' of accepted orders
+        for the last `days` days.
+        Format: [{"date": "YYYY-MM-DD", "count": int}, ...]
         """
-        leads = Lead.objects.filter(agent=self)
-        lead_conversion_stats = {
-            "sale": leads.filter(category__name="sale", is_converted=True).count(),
-            "no_sale": leads.filter(
-                category__name="no sale", is_converted=True
-            ).count(),
+        today = now().date()
+        start_date = today - timedelta(days=days - 1)
+
+        daily_orders = (
+            self.orders.filter(
+                status="Accepted", date_created__date__range=[start_date, today]
+            )
+            .annotate(day=TruncDay("date_created"))
+            .values("day")
+            .annotate(order_count=Count("id"))
+            .order_by("day")
+        )
+
+        daily_orders_data = [
+            {"date": entry["day"].strftime("%Y-%m-%d"), "count": entry["order_count"]}
+            for entry in daily_orders
+        ]
+        return daily_orders_data
+
+    def get_monthly_revenue_data(self, months=6):
+        """
+        Return a list of dictionaries containing 'month' and 'revenue' of accepted orders
+        for the last `months` months.
+        Format: [{"month": "YYYY-MM", "revenue": float}, ...]
+        """
+        from django.db.models.functions import TruncMonth
+        from django.db.models import Sum, F
+
+        today = now().date()
+        # Approximate start date by going ~months*30 days back or pick first day of current month - logic can vary
+        # For simplicity, we just count last X months including partial months
+        # Better approach: find first day of (today - X months)
+        start_month = today.replace(day=1) - timedelta(days=30 * (months - 1))
+
+        monthly_orders = (
+            self.orders.filter(status="Accepted", date_created__date__gte=start_month)
+            .annotate(month=TruncMonth("date_created"))
+            .values("month")
+            .annotate(
+                monthly_revenue=Sum(
+                    F("order_products__product_price") * F("order_products__quantity")
+                )
+            )
+            .order_by("month")
+        )
+
+        monthly_revenue_data = [
+            {
+                "month": entry["month"].strftime("%Y-%m"),
+                "revenue": float(entry["monthly_revenue"] or 0),
+            }
+            for entry in monthly_orders
+        ]
+        return monthly_revenue_data
+
+    def get_lead_conversion_count(self, start_date=None, end_date=None):
+        """
+        Calculate the number of leads converted by the agent within the given date range,
+        grouped by category: "sale", "no sale".
+        """
+        leads = Lead.objects.filter(agent=self, is_converted=True)
+        if start_date:
+            leads = leads.filter(date_created__gte=start_date)
+        if end_date:
+            leads = leads.filter(date_created__lte=end_date)
+
+        # Filter out 'new' category leads
+        sale_count = leads.filter(category__name="sale").count()
+        no_sale_count = leads.filter(category__name="no sale").count()
+
+        return {
+            "sale": sale_count,
+            "no_sale": no_sale_count,
         }
-
-        # Calculate the conversion ratio for each category
-        total_converted = sum(lead_conversion_stats.values())
-        if total_converted > 0:
-            lead_conversion_stats["sale_ratio"] = (
-                lead_conversion_stats["sale"] / total_converted
-            )
-            lead_conversion_stats["no_sale_ratio"] = (
-                lead_conversion_stats["no_sale"] / total_converted
-            )
-        else:
-            lead_conversion_stats["sale_ratio"] = 0
-            lead_conversion_stats["no_sale_ratio"] = 0
-
-        return lead_conversion_stats
 
     def get_stats(self, start_date=None, end_date=None):
         """
@@ -81,7 +136,9 @@ class Agent(models.Model):
         Allows for optional date range filtering for order stats.
         """
         order_stats = self.get_order_stats(start_date, end_date)
-        lead_conversion_stats = self.get_lead_conversion_count()
+        lead_conversion_stats = self.get_lead_conversion_count(
+            start_date, end_date
+        )  # Add start_date, end_date here
 
         return {
             **order_stats,

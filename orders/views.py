@@ -325,15 +325,6 @@ class OrderStatisticsView(generic.TemplateView):
         return context
 
 
-class ProductSalesDetailView(generic.ListView):
-    template_name = "orders/product_sales_detail.html"
-    context_object_name = "product_sales"
-
-    def get_queryset(self):
-        # Get the total quantity of each product sold (snapshot of product name)
-        return OrderProduct.get_product_sales()
-
-
 class DailyRevenueChartView(generic.TemplateView):
     template_name = "orders/daily_revenue_chart.html"
 

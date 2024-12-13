@@ -3,6 +3,7 @@ from django.urls import reverse_lazy
 from django.views import generic
 from django.contrib.messages.views import SuccessMessageMixin
 from .models import Product
+from orders.models import OrderProduct
 from .forms import ProductForm, AddProductForm
 from clients.models import Client
 
@@ -71,3 +72,12 @@ class AddProductsToClientView(generic.FormView):
                 kwargs={"client_number": client.client_number},
             )
         )
+
+
+class ProductSalesDetailView(generic.ListView):
+    template_name = "products/product_sales_detail.html"
+    context_object_name = "product_sales"
+
+    def get_queryset(self):
+        # Get the total quantity of each product sold (snapshot of product name)
+        return OrderProduct.get_product_sales()

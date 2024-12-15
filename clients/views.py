@@ -9,6 +9,8 @@ from django.db.models import Q
 from orders.forms import StatisticsFilterForm
 from datetime import timedelta
 from django.utils import timezone
+import json
+from django.core.serializers.json import DjangoJSONEncoder
 
 
 class ClientListView(LoginRequiredMixin, generic.ListView):
@@ -159,13 +161,24 @@ class ClientStatisticsView(generic.TemplateView):
         client_number = self.kwargs.get("client_number")
         client = get_object_or_404(Client, client_number=client_number)
 
-        # Fetch client statistics using the methods defined in the Client model
+        # Fetch client statistics
         client_statistics = client.order_statistics(
             start_date=start_datetime, end_date=end_datetime
         )
 
-        # Add the client and statistics to the context
+        # Fetch monthly order stats using the model method
+        monthly_order_stats = client.monthly_order_stats(
+            start_date=start_datetime, end_date=end_datetime
+        )
+
+        # Convert the data to JSON using DjangoJSONEncoder
+        monthly_order_stats_json = json.dumps(
+            monthly_order_stats, cls=DjangoJSONEncoder
+        )
+
+        # Add to context
         context["client"] = client
         context["client_statistics"] = client_statistics
+        context["monthly_order_stats"] = monthly_order_stats_json
 
         return context

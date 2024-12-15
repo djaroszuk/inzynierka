@@ -8,6 +8,7 @@ from django.apps import apps
 from django.db.models.functions import TruncDay
 from django.db.models import Count
 from django.utils.timezone import now, timedelta
+from django.utils import timezone
 
 
 class User(AbstractUser):
@@ -114,16 +115,19 @@ class Agent(models.Model):
         """
         Calculate the number of leads converted by the agent within the given date range,
         grouped by category: "sale", "no sale".
+        Filters based on conversion_date instead of date_created.
         """
         leads = Lead.objects.filter(agent=self, is_converted=True)
+
+        # Filter based on conversion_date
         if start_date:
-            leads = leads.filter(date_created__gte=start_date)
+            leads = leads.filter(conversion_date__gte=start_date)
         if end_date:
-            leads = leads.filter(date_created__lte=end_date)
+            leads = leads.filter(conversion_date__lte=end_date)
 
         # Filter out 'new' category leads
-        sale_count = leads.filter(category__name="sale").count()
-        no_sale_count = leads.filter(category__name="no sale").count()
+        sale_count = leads.filter(category__name__iexact="sale").count()
+        no_sale_count = leads.filter(category__name__iexact="no sale").count()
 
         return {
             "sale": sale_count,
@@ -162,6 +166,7 @@ class Lead(models.Model):
     )
     is_converted = models.BooleanField(default=False)
     date_created = models.DateTimeField(auto_now_add=True)
+    conversion_date = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
@@ -195,29 +200,36 @@ def post_user_created_signal(sender, instance, created, **kwargs):
 
 
 @receiver(post_save, sender=Lead)
-def create_client_from_lead(sender, instance, created, **kwargs):
-    # Only trigger if the lead has been converted and it's not a newly created lead
-    if not created and instance.is_converted and instance.category.name == "sale":
-        # Check if a client with the same email already exists
-        client, created = Client.objects.get_or_create(
-            email=instance.email,  # Check if client with the same email exists
-            defaults={  # This will only be used if the client doesn't exist
-                "first_name": instance.first_name,
-                "last_name": instance.last_name,
-                "age": instance.age,
-                "phone_number": instance.phone_number,
-            },
-        )
+def handle_lead_conversion(sender, instance, created, **kwargs):
+    """
+    Handle actions after a Lead is saved.
+    - If a lead is converted, set the conversion_date.
+    - If a lead is converted and is of category 'sale', create/update a Client.
+    """
+    # If the lead is newly created and converted
+    if not created and instance.is_converted:
+        if not instance.conversion_date:
+            instance.conversion_date = timezone.now()
+            instance.save(update_fields=["conversion_date"])
 
-        # If a new client was created, log it or take any other necessary actions
-        if created:
-            print(
-                f"A new client was created for {instance.first_name} {instance.last_name} ({instance.email})."
+        if instance.category and instance.category.name.lower() == "sale":
+            # Check if a client with the same email already exists
+            client, created_client = Client.objects.get_or_create(
+                email=instance.email,
+                defaults={
+                    "first_name": instance.first_name,
+                    "last_name": instance.last_name,
+                    "age": instance.age,
+                    "phone_number": instance.phone_number,
+                },
             )
 
-        # If you want to handle an existing client case, you can do so here
-        else:
-            print(f"Client with email {instance.email} already exists.")
+            if created_client:
+                print(
+                    f"A new client was created for {instance.first_name} {instance.last_name} ({instance.email})."
+                )
+            else:
+                print(f"Client with email {instance.email} already exists.")
 
 
 def create_default_categories(sender, **kwargs):

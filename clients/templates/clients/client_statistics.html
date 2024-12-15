@@ -1,19 +1,49 @@
+<!-- clients/templates/clients/client_statistics.html -->
+
 {% extends "base.html" %}
+{% load static %}
 
 {% block content %}
-<section class="statistics">
-<h1>Statistics for {{client.first_name}} {{client.last_name}}</h1>
+<section class="statistics container py-4">
+  <h1 class="mb-4">Statistics for {{ client.first_name }} {{ client.last_name }}</h1>
 
-  <form method="get">
+  <!-- Filter Form -->
+  <form method="get" class="mb-4">
     {{ form.as_p }}
     <button type="submit" class="btn btn-primary">Filter</button>
-</form>
+  </form>
 
-  <!-- Display statistics -->
-  <ul>
+  <!-- Display Statistics -->
+  <ul class="list-unstyled mb-4">
     <li><strong>Total Revenue:</strong> ${{ client_statistics.total_revenue }}</li>
-    <li><strong>Total Products Sold:</strong><a href="{% url 'products:product-sales-detail' %}"> {{ client_statistics.total_products_sold }}</a></li>
+    <li>
+      <strong>Total Products Sold:</strong>
+      <a href="{% url 'products:product-sales-detail' %}">
+        {{ client_statistics.total_products_sold }}
+      </a>
+    </li>
     <li><strong>Total Orders:</strong> {{ client_statistics.total_orders }}</li>
   </ul>
+
+  <!-- Order Frequency and Spending Chart -->
+  <div class="mb-5">
+    <h2 class="mb-3">Monthly Order Frequency &amp; Spending</h2>
+    {% if monthly_order_stats %}
+      <canvas id="orderFrequencyChart" width="400" height="200"></canvas>
+    {% else %}
+      <p>No order frequency data available for the selected date range.</p>
+    {% endif %}
+  </div>
 </section>
+
+<!-- Load Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/client_statistics.js' %}"></script>
+
+<!-- Embed Data using a separate <script> tag -->
+{% if monthly_order_stats %}
+  <script id="monthlyOrderStatsData" type="application/json">
+    {{ monthly_order_stats|safe }}
+  </script>
+{% endif %}
 {% endblock %}

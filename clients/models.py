@@ -1,8 +1,8 @@
-# clients/models.py
 import random
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.db.models import Sum, F
+from django.db.models import Sum, F, Count
+from django.db.models.functions import TruncMonth
 
 
 class Client(models.Model):
@@ -49,6 +49,7 @@ class Client(models.Model):
     def total_revenue(self, start_date=None, end_date=None):
         """Calculate total revenue for this client, considering only accepted orders."""
         queryset = self.orders.filter(status="Accepted")
+
         if start_date:
             queryset = queryset.filter(date_created__gte=start_date)
         if end_date:
@@ -66,6 +67,7 @@ class Client(models.Model):
     def total_products_sold(self, start_date=None, end_date=None):
         """Calculate total products sold for this client, considering only accepted orders."""
         queryset = self.orders.filter(status="Accepted")
+
         if start_date:
             queryset = queryset.filter(date_created__gte=start_date)
         if end_date:
@@ -76,6 +78,7 @@ class Client(models.Model):
     def order_statistics(self, start_date=None, end_date=None):
         """Calculate order-related statistics for this client."""
         queryset = self.orders.filter(status="Accepted")
+
         if start_date:
             queryset = queryset.filter(date_created__gte=start_date)
         if end_date:
@@ -85,6 +88,37 @@ class Client(models.Model):
             "total_revenue": self.total_revenue(start_date, end_date),
             "total_products_sold": self.total_products_sold(start_date, end_date),
             "total_orders": queryset.count(),
+        }
+
+    def monthly_order_stats(self, start_date=None, end_date=None):
+        """
+        Calculate the monthly number of accepted orders and total amount spent.
+        Returns a dictionary with 'labels', 'order_counts', and 'total_spent'.
+        """
+        queryset = self.orders.filter(status="Accepted")
+
+        if start_date:
+            queryset = queryset.filter(date_created__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(date_created__lte=end_date)
+
+        # Annotate each order with the month it was created
+        monthly_data = (
+            queryset.annotate(month=TruncMonth("date_created"))
+            .values("month")
+            .annotate(
+                order_count=Count("id"),
+                total_spent=Sum(
+                    F("order_products__product_price") * F("order_products__quantity")
+                ),
+            )
+            .order_by("month")
+        )
+
+        return {
+            "labels": [entry["month"].strftime("%Y-%m") for entry in monthly_data],
+            "order_counts": [entry["order_count"] for entry in monthly_data],
+            "total_spent": [entry["total_spent"] or 0 for entry in monthly_data],
         }
 
     def __str__(self):

@@ -14,14 +14,12 @@
   <!-- Display Aggregated Statistics -->
   <ul class="list-unstyled mb-4">
     <li><strong>Total Revenue:</strong> ${{ all_clients_statistics.total_revenue }}</li>
-    <li>
-      <strong>Total Products Sold:</strong>
-      {{ all_clients_statistics.total_products_sold }}
-    </li>
+    <li><strong>Total Products Sold:</strong> {{ all_clients_statistics.total_products_sold }}</li>
     <li><strong>Total Orders:</strong> {{ all_clients_statistics.total_orders }}</li>
+    <li><strong>Total Clients:</strong> {{ total_clients }}</li>
   </ul>
 
-  <!-- Order Frequency and Spending Chart -->
+  <!-- Monthly Order Frequency and Spending Chart -->
   <div class="mb-5">
     <h2 class="mb-3">Monthly Order Frequency &amp; Spending</h2>
     {% if monthly_order_stats %}
@@ -31,7 +29,7 @@
     {% endif %}
   </div>
 
-  <!-- Average Order Value Chart -->
+  <!-- Monthly Average Order Value Chart -->
   <div class="mb-5">
     <h2 class="mb-3">Monthly Average Order Value (AOV)</h2>
     {% if monthly_aov %}
@@ -40,12 +38,24 @@
       <p>No Average Order Value data available for the selected date range.</p>
     {% endif %}
   </div>
+
+  <!-- Lifetime Value Chart -->
+  <div class="mb-5">
+    <h2 class="mb-3">Lifetime Value (LTV) with Baseline</h2>
+    {% if ltv_data %}
+      <canvas id="lifetimeValueChart" width="400" height="200"></canvas>
+    {% else %}
+      <p>No Lifetime Value data available for the selected grouping.</p>
+    {% endif %}
+  </div>
 </section>
 
 <!-- Load Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{% static 'js/client_statistics.js' %}"></script>
-<script src="{% static 'js/average_order_value.js' %}"></script> <!-- New JS file -->
+<script src="{% static 'js/average_order_value.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+<script src="{% static 'js/ltv_chart.js' %}"></script>
 
 <!-- Embed Data using separate <script> tags -->
 {% if monthly_order_stats %}
@@ -57,6 +67,15 @@
 {% if monthly_aov %}
   <script id="averageOrderValueData" type="application/json">
     {{ monthly_aov|safe }}
+  </script>
+{% endif %}
+
+{% if ltv_data %}
+  <script id="ltvData" type="application/json">
+    {{ ltv_data|safe }}
+  </script>
+  <script id="baselineValue" type="application/json">
+    {{ baseline_value|safe }}
   </script>
 {% endif %}
 {% endblock %}

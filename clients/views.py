@@ -204,6 +204,9 @@ class AllClientsStatisticsView(generic.TemplateView):
         # Extract filtering variables
         start_datetime = None
         end_datetime = None
+        group_by = self.request.GET.get(
+            "group_by", "month"
+        )  # Default grouping: monthly
 
         if form.is_valid():
             # Retrieve validated data from the form
@@ -212,8 +215,8 @@ class AllClientsStatisticsView(generic.TemplateView):
 
         # Fetch all clients
         clients = Client.objects.all()
-
-        # Aggregate statistics for all clients
+        total_clients = clients.count()
+        baseline_value = 500  # Baseline for LTV
         all_clients_statistics = {
             "total_revenue": 0,
             "total_products_sold": 0,
@@ -221,8 +224,13 @@ class AllClientsStatisticsView(generic.TemplateView):
         }
         monthly_order_stats = []
         monthly_aov = []
+        ltv_data = {"labels": [], "ltv_values": []}
+
+        # Prepare cumulative LTV
+        cumulative_revenue_by_period = {}
 
         for client in clients:
+            # Gather overall statistics
             stats = client.order_statistics(
                 start_date=start_datetime, end_date=end_datetime
             )
@@ -232,7 +240,7 @@ class AllClientsStatisticsView(generic.TemplateView):
             ]
             all_clients_statistics["total_orders"] += stats["total_orders"]
 
-            # Append monthly stats for charts
+            # Append monthly data for charts
             monthly_order_stats.append(
                 client.monthly_order_stats(
                     start_date=start_datetime, end_date=end_datetime
@@ -244,22 +252,43 @@ class AllClientsStatisticsView(generic.TemplateView):
                 )
             )
 
+            # Fetch cumulative LTV for the client
+            client_ltv = client.lifetime_value_over_time(group_by=group_by)
+            for label, value in zip(client_ltv["labels"], client_ltv["ltv_values"]):
+                if label not in cumulative_revenue_by_period:
+                    cumulative_revenue_by_period[label] = 0
+                cumulative_revenue_by_period[label] += value
+
+        # Sort labels (time periods) for consistent chart display
+        sorted_labels = sorted(cumulative_revenue_by_period.keys())
+
+        # Calculate average LTV across all clients
+        for label in sorted_labels:
+            total_revenue = cumulative_revenue_by_period[label]
+            avg_ltv = total_revenue / total_clients if total_clients > 0 else 0
+            ltv_data["labels"].append(label)
+            ltv_data["ltv_values"].append(round(avg_ltv, 2))
+
         # Consolidate monthly data for all clients
         consolidated_monthly_stats = self.consolidate_monthly_data(monthly_order_stats)
         consolidated_monthly_aov = self.consolidate_monthly_aov(monthly_aov)
 
-        # Convert the data to JSON using DjangoJSONEncoder
+        # Convert data to JSON using DjangoJSONEncoder
         consolidated_monthly_stats_json = json.dumps(
             consolidated_monthly_stats, cls=DjangoJSONEncoder
         )
         consolidated_monthly_aov_json = json.dumps(
             consolidated_monthly_aov, cls=DjangoJSONEncoder
         )
+        ltv_data_json = json.dumps(ltv_data, cls=DjangoJSONEncoder)
 
-        # Add to context
+        # Add data to context
         context["all_clients_statistics"] = all_clients_statistics
         context["monthly_order_stats"] = consolidated_monthly_stats_json
-        context["monthly_aov"] = consolidated_monthly_aov_json  # New context variable
+        context["monthly_aov"] = consolidated_monthly_aov_json
+        context["ltv_data"] = ltv_data_json
+        context["baseline_value"] = baseline_value
+        context["total_clients"] = total_clients
 
         return context
 

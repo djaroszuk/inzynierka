@@ -208,6 +208,50 @@ class Client(models.Model):
             "average_order_value": average_order_value,
         }
 
+    def lifetime_value_over_time(self, group_by="year"):
+        """
+        Calculate the customer's lifetime value grouped by the specified time period.
+        group_by can be 'month', 'quarter', or 'year'.
+        Returns a dictionary with grouped periods and cumulative revenue.
+        """
+        from django.db.models.functions import TruncMonth, TruncQuarter, TruncYear
+        from django.db.models import Sum
+
+        # Define the grouping logic
+        if group_by == "month":
+            group_by_trunc = TruncMonth("date_created")
+        elif group_by == "quarter":
+            group_by_trunc = TruncQuarter("date_created")
+        elif group_by == "year":
+            group_by_trunc = TruncYear("date_created")
+        else:
+            raise ValueError(
+                "Invalid group_by value. Choose 'month', 'quarter', or 'year'."
+            )
+
+        # Aggregate revenue grouped by the chosen period
+        orders = self.orders.filter(status="Accepted")
+        grouped_data = (
+            orders.annotate(period=group_by_trunc)
+            .values("period")
+            .annotate(
+                total_revenue=Sum(
+                    F("order_products__product_price") * F("order_products__quantity")
+                )
+            )
+            .order_by("period")
+        )
+
+        # Calculate cumulative revenue
+        cumulative_revenue = 0
+        ltv_data = {"labels": [], "ltv_values": []}
+        for entry in grouped_data:
+            cumulative_revenue += entry["total_revenue"] or 0
+            ltv_data["labels"].append(entry["period"].strftime("%Y-%m-%d"))
+            ltv_data["ltv_values"].append(cumulative_revenue)
+
+        return ltv_data
+
     def __str__(self):
         return f"{self.first_name} {self.last_name} - Client"
 

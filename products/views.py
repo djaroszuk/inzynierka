@@ -85,9 +85,11 @@ class ProductSalesDetailView(generic.ListView):
         if form.is_valid():
             start_datetime = form.cleaned_data.get("start_datetime")
             end_datetime = form.cleaned_data.get("end_datetime")
+            print(f"Filtering data from {start_datetime} to {end_datetime}")
             return OrderProduct.get_product_sales(
                 start_date=start_datetime, end_date=end_datetime
             )
+        print("No date filters applied")
         return OrderProduct.get_product_sales()
 
     def get_context_data(self, **kwargs):
@@ -100,24 +102,49 @@ class ProductSalesDetailView(generic.ListView):
 
         # Get filtered sales data
         product_sales = self.get_queryset()
+        print(f"Product sales raw data: {product_sales}")
 
         # Calculate total products sold and total revenue
         total_quantity = sum(item["total_quantity_sold"] for item in product_sales)
         total_revenue = sum(item["total_revenue_sold"] for item in product_sales)
+        print(f"Total quantity sold: {total_quantity}")
+        print(f"Total revenue: {total_revenue}")
 
         if total_quantity == 0 or total_revenue == 0:
             labels = []
             quantity_data = []
             revenue_data = []
         else:
-            labels = [item["product_name"] for item in product_sales]
+            # Sort by total quantity sold and take top 5
+            sorted_sales = sorted(
+                product_sales, key=lambda x: x["total_quantity_sold"], reverse=True
+            )
+            top_sales = sorted_sales[:5]
+            other_sales = sorted_sales[5:]
+
+            # Aggregate the "Other" category
+            other_quantity = sum(item["total_quantity_sold"] for item in other_sales)
+            other_revenue = sum(item["total_revenue_sold"] for item in other_sales)
+
+            labels = [item["product_name"] for item in top_sales]
+            quantity_data = [item["total_quantity_sold"] for item in top_sales]
+            revenue_data = [item["total_revenue_sold"] for item in top_sales]
+
+            if other_sales:
+                labels.append("Other")
+                quantity_data.append(other_quantity)
+                revenue_data.append(other_revenue)
+
+            print(f"Top products: {labels}")
+            print(f"Quantities: {quantity_data}")
+            print(f"Revenues: {revenue_data}")
+
+            # Convert data to percentages
             quantity_data = [
-                round((item["total_quantity_sold"] / total_quantity) * 100, 2)
-                for item in product_sales
+                round((value / total_quantity) * 100, 2) for value in quantity_data
             ]
             revenue_data = [
-                round((item["total_revenue_sold"] / total_revenue) * 100, 2)
-                for item in product_sales
+                round((value / total_revenue) * 100, 2) for value in revenue_data
             ]
 
         # **Convert Decimal to float**
@@ -128,5 +155,10 @@ class ProductSalesDetailView(generic.ListView):
         context["chart_labels"] = labels
         context["chart_quantity_data"] = quantity_data
         context["chart_revenue_data"] = revenue_data
+
+        # Debug final chart data
+        print(f"Chart labels: {labels}")
+        print(f"Chart quantity data: {quantity_data}")
+        print(f"Chart revenue data: {revenue_data}")
 
         return context

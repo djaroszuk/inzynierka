@@ -1,11 +1,9 @@
-<!-- clients/templates/clients/client_statistics.html -->
-
 {% extends "base.html" %}
 {% load static %}
 
 {% block content %}
 <section class="statistics container py-4">
-  <h1 class="mb-4">Statistics for {{ client.first_name }} {{ client.last_name }}</h1>
+  <h1 class="mb-4">Statistics for All Clients</h1>
 
   <!-- Filter Form -->
   <form method="get" class="mb-4">
@@ -13,16 +11,14 @@
     <button type="submit" class="btn btn-primary">Filter</button>
   </form>
 
-  <!-- Display Statistics -->
+  <!-- Display Aggregated Statistics -->
   <ul class="list-unstyled mb-4">
-    <li><strong>Total Revenue:</strong> ${{ client_statistics.total_revenue }}</li>
+    <li><strong>Total Revenue:</strong> ${{ all_clients_statistics.total_revenue }}</li>
     <li>
       <strong>Total Products Sold:</strong>
-      <a href="{% url 'products:product-sales-detail' %}">
-        {{ client_statistics.total_products_sold }}
-      </a>
+      {{ all_clients_statistics.total_products_sold }}
     </li>
-    <li><strong>Total Orders:</strong> {{ client_statistics.total_orders }}</li>
+    <li><strong>Total Orders:</strong> {{ all_clients_statistics.total_orders }}</li>
   </ul>
 
   <!-- Order Frequency and Spending Chart -->

@@ -171,14 +171,140 @@ class ClientStatisticsView(generic.TemplateView):
             start_date=start_datetime, end_date=end_datetime
         )
 
+        # Fetch monthly average order value using the new model method
+        monthly_aov = client.monthly_average_order_value(
+            start_date=start_datetime, end_date=end_datetime
+        )
+
         # Convert the data to JSON using DjangoJSONEncoder
         monthly_order_stats_json = json.dumps(
             monthly_order_stats, cls=DjangoJSONEncoder
         )
+        monthly_aov_json = json.dumps(monthly_aov, cls=DjangoJSONEncoder)
 
         # Add to context
         context["client"] = client
         context["client_statistics"] = client_statistics
         context["monthly_order_stats"] = monthly_order_stats_json
+        context["monthly_aov"] = monthly_aov_json  # New context variable
 
         return context
+
+
+class AllClientsStatisticsView(generic.TemplateView):
+    template_name = "clients/all_clients_statistics.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Initialize the filter form with GET data if available
+        form = StatisticsFilterForm(self.request.GET or None)
+        context["form"] = form
+
+        # Extract filtering variables
+        start_datetime = None
+        end_datetime = None
+
+        if form.is_valid():
+            # Retrieve validated data from the form
+            start_datetime = form.cleaned_data.get("start_datetime")
+            end_datetime = form.cleaned_data.get("end_datetime")
+
+        # Fetch all clients
+        clients = Client.objects.all()
+
+        # Aggregate statistics for all clients
+        all_clients_statistics = {
+            "total_revenue": 0,
+            "total_products_sold": 0,
+            "total_orders": 0,
+        }
+        monthly_order_stats = []
+        monthly_aov = []
+
+        for client in clients:
+            stats = client.order_statistics(
+                start_date=start_datetime, end_date=end_datetime
+            )
+            all_clients_statistics["total_revenue"] += stats["total_revenue"]
+            all_clients_statistics["total_products_sold"] += stats[
+                "total_products_sold"
+            ]
+            all_clients_statistics["total_orders"] += stats["total_orders"]
+
+            # Append monthly stats for charts
+            monthly_order_stats.append(
+                client.monthly_order_stats(
+                    start_date=start_datetime, end_date=end_datetime
+                )
+            )
+            monthly_aov.append(
+                client.monthly_average_order_value(
+                    start_date=start_datetime, end_date=end_datetime
+                )
+            )
+
+        # Consolidate monthly data for all clients
+        consolidated_monthly_stats = self.consolidate_monthly_data(monthly_order_stats)
+        consolidated_monthly_aov = self.consolidate_monthly_aov(monthly_aov)
+
+        # Convert the data to JSON using DjangoJSONEncoder
+        consolidated_monthly_stats_json = json.dumps(
+            consolidated_monthly_stats, cls=DjangoJSONEncoder
+        )
+        consolidated_monthly_aov_json = json.dumps(
+            consolidated_monthly_aov, cls=DjangoJSONEncoder
+        )
+
+        # Add to context
+        context["all_clients_statistics"] = all_clients_statistics
+        context["monthly_order_stats"] = consolidated_monthly_stats_json
+        context["monthly_aov"] = consolidated_monthly_aov_json  # New context variable
+
+        return context
+
+    def consolidate_monthly_data(self, monthly_order_stats):
+        """
+        Consolidates monthly order stats for all clients.
+        """
+        consolidated = {}
+        for stats in monthly_order_stats:
+            for label, orders, spent in zip(
+                stats["labels"], stats["order_counts"], stats["total_spent"]
+            ):
+                if label not in consolidated:
+                    consolidated[label] = {"order_counts": 0, "total_spent": 0}
+                consolidated[label]["order_counts"] += orders
+                consolidated[label]["total_spent"] += spent
+
+        # Convert to sorted list for chart.js
+        labels = sorted(consolidated.keys())
+        return {
+            "labels": labels,
+            "order_counts": [consolidated[label]["order_counts"] for label in labels],
+            "total_spent": [consolidated[label]["total_spent"] for label in labels],
+        }
+
+    def consolidate_monthly_aov(self, monthly_aov):
+        """
+        Consolidates monthly Average Order Value (AOV) for all clients.
+        """
+        consolidated = {}
+        for stats in monthly_aov:
+            for label, aov in zip(stats["labels"], stats["average_order_value"]):
+                if label not in consolidated:
+                    consolidated[label] = {"total_aov": 0, "count": 0}
+                consolidated[label]["total_aov"] += aov
+                consolidated[label]["count"] += 1
+
+        # Calculate average AOV per month
+        labels = sorted(consolidated.keys())
+        return {
+            "labels": labels,
+            "average_order_value": [
+                round(
+                    consolidated[label]["total_aov"] / consolidated[label]["count"], 2
+                )
+                for label in labels
+            ],
+        }

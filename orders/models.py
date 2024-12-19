@@ -4,6 +4,7 @@ from clients.models import Client
 from products.models import Product
 from django.db.models import Count
 from django.db.models.functions import TruncDay
+from django.utils import timezone
 
 
 class OrderManager(models.Manager):
@@ -60,7 +61,7 @@ class OrderManager(models.Manager):
 
 class Order(models.Model):
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="orders")
-    date_created = models.DateTimeField(auto_now_add=True)
+    date_created = models.DateTimeField(default=timezone.now)
     agent = models.ForeignKey(
         "leads.Agent",
         on_delete=models.CASCADE,

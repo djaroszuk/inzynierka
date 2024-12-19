@@ -3,6 +3,8 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.db.models import Sum, F, Count
 from django.db.models.functions import TruncMonth
+from django.utils import timezone
+import datetime
 
 
 class Client(models.Model):
@@ -119,6 +121,91 @@ class Client(models.Model):
             "labels": [entry["month"].strftime("%Y-%m") for entry in monthly_data],
             "order_counts": [entry["order_count"] for entry in monthly_data],
             "total_spent": [entry["total_spent"] or 0 for entry in monthly_data],
+        }
+
+    def monthly_average_order_value(self, start_date=None, end_date=None):
+        """
+        Calculate the monthly Average Order Value (AOV) for the client.
+        Returns a dictionary with 'labels' and 'average_order_value'.
+        """
+        # Handle the case where there are no orders
+        if not self.orders.exists():
+            return {
+                "labels": [],
+                "average_order_value": [],
+            }
+
+        if not start_date:
+            # Get the earliest order's date_created and convert to date, set day=1
+            start_order = self.orders.earliest("date_created")
+            start_date = start_order.date_created.replace(day=1).date()
+        else:
+            # Ensure start_date is a date object
+            if isinstance(start_date, datetime.datetime):
+                start_date = start_date.date()
+
+        if not end_date:
+            end_date = timezone.now().date()
+        else:
+            # Ensure end_date is a date object
+            if isinstance(end_date, datetime.datetime):
+                end_date = end_date.date()
+
+        # Generate all months between start_date and end_date
+        months = []
+        current = start_date.replace(day=1)
+        while current <= end_date:
+            months.append(current.strftime("%Y-%m"))
+            # Move to the next month
+            year = current.year + (current.month // 12)
+            month = (current.month % 12) + 1
+            try:
+                current = current.replace(year=year, month=month, day=1)
+            except ValueError:
+                # Handle month rollover if needed
+                current = datetime.date(year, month, 1)
+
+        # Fetch existing monthly data
+        queryset = self.orders.filter(
+            status="Accepted", date_created__gte=start_date, date_created__lte=end_date
+        )
+        if not queryset.exists():
+            # If no orders are found in the date range, return zeros for all months
+            return {
+                "labels": months,
+                "average_order_value": [0.0] * len(months),
+            }
+
+        monthly_data = (
+            queryset.annotate(month=TruncMonth("date_created"))
+            .values("month")
+            .annotate(
+                order_count=Count("id"),
+                total_spent=Sum(
+                    F("order_products__product_price") * F("order_products__quantity")
+                ),
+            )
+            .order_by("month")
+        )
+
+        # Create a dictionary from the queryset for easy lookup
+        data_dict = {entry["month"].strftime("%Y-%m"): entry for entry in monthly_data}
+
+        # Prepare the final data, filling in zeros where necessary
+        average_order_value = []
+        for month in months:
+            if month in data_dict and data_dict[month]["order_count"] > 0:
+                aov = (
+                    float(data_dict[month]["total_spent"])
+                    / data_dict[month]["order_count"]
+                )
+                average_order_value.append(round(aov, 2))  # Rounded to 2 decimal places
+            else:
+                average_order_value.append(0.0)
+
+        return {
+            "labels": months,
+            "average_order_value": average_order_value,
         }
 
     def __str__(self):

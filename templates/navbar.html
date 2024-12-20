@@ -28,10 +28,10 @@
               </a>
               <!-- Dropdown Menu -->
               <div class="absolute hidden group-hover:block bg-white border border-gray-200 rounded shadow-lg py-2 w-48" style="height: 300px; width: 180px;">
-                  <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Sales Statistics</a>
-                  <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Customer Statistics</a>
-                  <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Product Statistics</a>
-                  <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Regional Statistics</a>
+                  <a href="{% url 'orders:order-statistics' %}"class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Sales Statistics</a>
+                  <a href="{% url 'products:all-products-statistics' %}"class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Products Statistics</a>
+                  <a href="{% url 'agents:all-agents-statistics' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Agents Statistics</a>
+                  <a href="{% url 'clients:all-client-statistics' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Clients Statistics</a>
                   <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Yearly Statistics</a>
                   <a href="#" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Monthly Statistics</a>
               </div>

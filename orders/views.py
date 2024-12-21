@@ -14,10 +14,10 @@ from django.contrib.sites.shortcuts import get_current_site
 import uuid
 from django.core.mail import send_mail
 from django.utils.timezone import now
-from datetime import timedelta
 from django.db.models.functions import TruncDay
 from django.db.models import Count, Sum, F
 import json
+from decimal import Decimal
 
 
 class OrderListView(generic.ListView):
@@ -43,21 +43,23 @@ class OrderDetailView(LoginRequiredMixin, generic.DetailView):
 class OrderCreateView(LoginRequiredMixin, generic.CreateView):
     model = Order
     template_name = "orders/order_create.html"
-    fields = [
-        "client"
-    ]  # Only client field in the form (this can be pre-filled if needed)
+    fields = ["client"]
+
+    DISCOUNT_CHOICES = {
+        "0": Decimal("0.00"),  # No discount
+        "5": Decimal("0.05"),
+        "10": Decimal("0.10"),
+        "15": Decimal("0.15"),
+    }
 
     def get_initial(self):
         """Set the initial value for the client field."""
         initial = super().get_initial()
-        client_number = self.request.GET.get(
-            "client_number"
-        )  # Fetch client_number from query parameter
+        client_number = self.request.GET.get("client_number")
         if client_number:
             try:
-                # Retrieve the client using client_number
                 client = Client.objects.get(client_number=client_number)
-                initial["client"] = client  # Set the initial client
+                initial["client"] = client
             except Client.DoesNotExist:
                 messages.warning(
                     self.request,
@@ -66,23 +68,22 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
         return initial
 
     def get_context_data(self, **kwargs):
-        """Add the list of products to the context."""
+        """Add the list of products and discount options to the context."""
         context = super().get_context_data(**kwargs)
-        context["products"] = Product.objects.all()  # Fetch all products
+        context["products"] = Product.objects.all()
+        context["discount_choices"] = [0, 5, 10, 15]  # Discount options
         return context
 
     def form_valid(self, form):
-        """Override form_valid to handle creating associated OrderProduct instances."""
-        # Get selected products and quantities
-        product_ids = self.request.POST.getlist("product")  # List of selected products
-        quantities = self.request.POST.getlist(
-            "quantity"
-        )  # List of quantities for each product
+        """Handle creating the order with associated products and a discount."""
+        product_ids = self.request.POST.getlist("product")
+        quantities = self.request.POST.getlist("quantity")
+        discount = self.request.POST.get("discount", "0")  # Default discount to 0
+        discount = self.DISCOUNT_CHOICES.get(discount, Decimal("0.00"))
 
         # Convert quantities to integers
         quantities = [int(q) for q in quantities]
 
-        # Validate that products and quantities are selected and valid
         if not product_ids or not any(q > 0 for q in quantities):
             messages.error(
                 self.request,
@@ -92,11 +93,9 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
                 self.request, self.template_name, self.get_context_data(form=form)
             )
 
-        # Check if there is sufficient stock for each product
         for product_id, quantity in zip(product_ids, quantities):
             product = get_object_or_404(Product, pk=product_id)
             if product.stock_quantity < quantity:
-                # If there is not enough stock, add an error message and return to the form
                 messages.error(
                     self.request,
                     f"Insufficient stock for {product.name}. Available: {product.stock_quantity}.",
@@ -105,40 +104,35 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
                     self.request, self.template_name, self.get_context_data(form=form)
                 )
 
-        # Create the order and save it
         order = form.save(commit=False)
         order.agent = self.request.user.agent
-        order.status = "Pending"  # Set status to "Pending" initially
+        order.discount = discount * 100  # Save discount as percentage
+        order.status = "Pending"
         order.save()
 
-        # Create OrderProduct entries for each selected product and adjust stock
         for product_id, quantity in zip(product_ids, quantities):
             if quantity > 0:
                 product = get_object_or_404(Product, pk=product_id)
-
-                # Adjust the stock for the product
                 product.stock_quantity -= quantity
-                product.save()  # Save the updated stock_quantity
+                product.save()
 
-                # Create the OrderProduct instance
+                # Create the OrderProduct with discounted price
                 OrderProduct.objects.create(
                     order=order,
                     product=product,
                     quantity=quantity,
                     product_name=product.name,
-                    product_price=product.price,
+                    product_price=None,  # Let the `save` method calculate discounted price
                 )
 
-                # Create a Contact instance for the client
         Contact.objects.create(
-            client=order.client,  # Link the contact to the order's client
-            reason=Contact.ReasonChoices.SALES_OFFER,  # Set the reason to "Sales-offer"
-            description=f"Order #{order.id} was sent to the client.",  # Description with the order number
-            contact_date=now(),  # Automatically set to the current date and time
-            user=self.request.user.userprofile,  # Assuming UserProfile is linked to the user
+            client=order.client,
+            reason=Contact.ReasonChoices.SALES_OFFER,
+            description=f"Order #{order.id} was sent to the client.",
+            contact_date=now(),
+            user=self.request.user.userprofile,
         )
 
-        # Redirect to the Order Summary View after the order is created
         return HttpResponseRedirect(
             reverse("orders:order-summary", kwargs={"pk": order.pk})
         )
@@ -300,11 +294,10 @@ class OrderStatisticsView(generic.TemplateView):
         end_datetime = None
 
         if form.is_valid():
-            # Retrieve validated data from the form
             start_datetime = form.cleaned_data.get("start_datetime")
             end_datetime = form.cleaned_data.get("end_datetime")
 
-        # Calculate statistics using the manager methods
+        # Calculate statistics
         total_revenue = Order.objects.total_revenue(
             start_date=start_datetime, end_date=end_datetime
         )
@@ -315,42 +308,24 @@ class OrderStatisticsView(generic.TemplateView):
             date_created__gte=start_datetime if start_datetime else datetime.min,
             date_created__lte=end_datetime if end_datetime else datetime.max,
         ).count()
-        # Update context with statistics
-        context["statistics"] = {
-            "total_revenue": total_revenue,
-            "total_products_sold": total_products_sold,
-            "total_orders": total_orders,
-        }
 
-        return context
-
-
-class DailyRevenueChartView(generic.TemplateView):
-    template_name = "orders/daily_revenue_chart.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        # Get the date range for the last 7 days
+        # Get daily revenue for the current month
         today = now().date()
-        start_date = today - timedelta(days=6)
-
-        # Query daily revenue and daily order count
-        orders = Order.objects.filter(status="Accepted")
+        start_date = today.replace(day=1)  # First day of the current month
         orders = (
-            orders.filter(date_created__date__range=[start_date, today])
+            Order.objects.filter(status="Accepted")
+            .filter(date_created__date__range=[start_date, today])
             .annotate(day=TruncDay("date_created"))
             .values("day")
             .annotate(
                 total_revenue=Sum(
                     F("order_products__product_price") * F("order_products__quantity")
                 ),
-                total_orders=Count("id"),  # Count orders for the day
+                total_orders=Count("id"),
             )
             .order_by("day")
         )
 
-        # Prepare data for the chart
         daily_revenue = [
             {
                 "date": entry["day"].strftime("%Y-%m-%d"),
@@ -360,34 +335,25 @@ class DailyRevenueChartView(generic.TemplateView):
             for entry in orders
         ]
 
-        # Embed data into context
+        # Calculate order completion rate
+        total_orders_count = Order.objects.count()
+        accepted_orders_count = Order.objects.filter(status="Accepted").count()
+        completion_rate = (
+            (accepted_orders_count / total_orders_count) * 100
+            if total_orders_count > 0
+            else 0
+        )
+
+        # Update context
+        context["statistics"] = {
+            "total_revenue": total_revenue,
+            "total_products_sold": total_products_sold,
+            "total_orders": total_orders,
+        }
         context["daily_revenue"] = json.dumps(daily_revenue)
-
-        return context
-
-
-class OrderCompletionRateView(generic.TemplateView):
-    template_name = "orders/order_completion_rate.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        # Calculate the number of accepted orders and total orders
-        total_orders = Order.objects.count()  # Total orders
-        accepted_orders = Order.objects.filter(
-            status="Accepted"
-        ).count()  # Accepted orders
-
-        # Calculate the completion rate as a percentage
-        if total_orders > 0:
-            completion_rate = (accepted_orders / total_orders) * 100
-        else:
-            completion_rate = 0
-
-        # Add the completion rate, accepted orders, and total orders to the context
         context["completion_rate"] = completion_rate
-        context["accepted_orders"] = accepted_orders
-        context["remaining_orders"] = total_orders - accepted_orders
-        context["total_orders"] = total_orders
+        context["accepted_orders"] = accepted_orders_count
+        context["remaining_orders"] = total_orders_count - accepted_orders_count
+        context["total_orders_count"] = total_orders_count
 
         return context

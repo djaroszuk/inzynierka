@@ -3,9 +3,15 @@ from django.views import generic
 import random
 from django.shortcuts import reverse
 from leads.models import Agent
-from .forms import AgentModelForm
+from .forms import AgentModelForm, EmailForm
 from .mixins import OrganisorAndLoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 import json
+from django.urls import reverse_lazy
+from clients.models import Client, Contact
+from django.utils.timezone import now
+from django.shortcuts import get_object_or_404
+
 
 from orders.forms import StatisticsFilterForm
 from decimal import Decimal
@@ -184,3 +190,125 @@ class AllAgentsStatsView(generic.TemplateView):
         context["monthly_revenue_data_json"] = json.dumps(monthly_revenue_data)
 
         return context
+
+
+class SendEmailView(LoginRequiredMixin, generic.FormView):
+    template_name = "agents/send_email.html"
+    form_class = EmailForm
+    success_url = reverse_lazy("agents:send-email")
+
+    def get_initial(self):
+        """
+        Pre-fill the form with initial data if 'client_number' is provided in the query params.
+        """
+        initial = super().get_initial()
+        client_number = self.request.GET.get("client_number")
+        if client_number:
+            print(f"[DEBUG] Prefilling form with client_number: {client_number}")
+            initial["client_number"] = client_number
+        return initial
+
+    def get_context_data(self, **kwargs):
+        """
+        Add additional context data for the template.
+        """
+        context = super().get_context_data(**kwargs)
+        context["is_organisor"] = self.request.user.is_organisor
+
+        # Include prefilled client number in the context
+        client_number = self.request.GET.get("client_number")
+        if client_number:
+            context["prefilled_client_number"] = client_number
+        else:
+            context["prefilled_client_number"] = None
+
+        return context
+
+    def form_valid(self, form):
+        """
+        Handle valid form submission for sending emails.
+        """
+        print("[DEBUG] form_valid called.")  # Debug to confirm method execution
+
+        send_to_all = form.cleaned_data.get("send_to_all", False)
+        client_number = form.cleaned_data.get("client_number")
+
+        print(f"[DEBUG] send_to_all: {send_to_all}, client_number: {client_number}")
+
+        subject = form.cleaned_data["subject"]
+        message = form.cleaned_data["message"]
+
+        if send_to_all:
+            if self.request.user.is_organisor:
+                print("[DEBUG] User is an organizer and selected 'Send to All'.")
+                # Retrieve all clients
+                clients = Client.objects.all()
+                print(
+                    f"[DEBUG] Retrieved clients: {[client.email for client in clients]}"
+                )
+
+                if not clients:
+                    print("[WARNING] No clients found.")
+                    form.add_error(None, "No clients available to send emails.")
+                    return self.form_invalid(form)
+
+                recipient_list = [client.email for client in clients if client.email]
+                print(f"[DEBUG] Recipient list: {recipient_list}")
+
+                if recipient_list:
+                    send_mail(
+                        subject,
+                        message,
+                        self.request.user.email,  # From email
+                        recipient_list,  # To emails
+                    )
+                    print("[INFO] Emails sent to all clients successfully.")
+
+                    # Create contact entries for all clients
+                    for client in clients:
+                        Contact.objects.create(
+                            client=client,
+                            reason=Contact.ReasonChoices.OTHER,
+                            description=f"An email with subject '{subject}' was sent to the client.",
+                            contact_date=now(),
+                            user=self.request.user.userprofile,
+                        )
+                else:
+                    print("[WARNING] Recipient list is empty. No emails sent.")
+                    form.add_error(None, "No valid client emails available.")
+                    return self.form_invalid(form)
+            else:
+                print("[WARNING] Non-organizer user tried to send to all clients.")
+                form.add_error(
+                    None, "You do not have permission to send emails to all clients."
+                )
+                return self.form_invalid(form)
+        else:
+            print("[DEBUG] Sending to a specific client.")
+            if not client_number:
+                print("[WARNING] Client number not provided.")
+                form.add_error(
+                    "client_number", "Client Number is required to send an email."
+                )
+                return self.form_invalid(form)
+
+            client = get_object_or_404(Client, client_number=client_number)
+
+            send_mail(
+                subject,
+                message,
+                self.request.user.email,  # From email
+                [client.email],  # To email
+            )
+            print(f"[INFO] Email sent to {client.email} successfully.")
+
+            # Create a contact entry for the specific client
+            Contact.objects.create(
+                client=client,
+                reason=Contact.ReasonChoices.OTHER,
+                description=f"An email with subject '{subject}' was sent to the client.",
+                contact_date=now(),
+                user=self.request.user.userprofile,
+            )
+
+        return super().form_valid(form)

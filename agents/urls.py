@@ -7,7 +7,9 @@ from .views import (
     AgentDeleteView,
     AgentStatsView,
     AllAgentsStatsView,
+    SendEmailView,
 )
+
 
 app_name = "agents"
 
@@ -19,4 +21,5 @@ urlpatterns = [
     path("<int:pk>/update/", AgentUpdateView.as_view(), name="agent-update"),
     path("<int:pk>/delete/", AgentDeleteView.as_view(), name="agent-delete"),
     path("<int:pk>/stats/", AgentStatsView.as_view(), name="agent-stats"),
+    path("send-email", SendEmailView.as_view(), name="send-email"),
 ]

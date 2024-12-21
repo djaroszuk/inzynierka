@@ -5,6 +5,7 @@ from products.models import Product
 from django.db.models import Count
 from django.db.models.functions import TruncDay
 from django.utils import timezone
+from decimal import Decimal
 
 
 class OrderManager(models.Manager):
@@ -80,11 +81,19 @@ class Order(models.Model):
         ],
         default="Pending",
     )
+    discount = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0, help_text="Discount percentage"
+    )
 
     @property
     def total_price(self):
-        """Calculate the total price of all products in this order."""
-        return sum(item.total_price() for item in self.order_products.all())
+        """
+        Calculate the total price of all products in this order,
+        including the discount if applicable.
+        """
+        return sum(
+            item.product_price * item.quantity for item in self.order_products.all()
+        )
 
     def __str__(self):
         return f"Order {self.id} for {self.client}"
@@ -106,7 +115,11 @@ class OrderProduct(models.Model):
         if not self.product_name and self.product:
             self.product_name = self.product.name
         if not self.product_price and self.product:
-            self.product_price = self.product.price
+            # Apply discount to product price
+            discount_factor = Decimal("1.00") - (
+                Decimal(self.order.discount) / Decimal(100)
+            )
+            self.product_price = self.product.price * discount_factor
         super().save(*args, **kwargs)
 
     def total_price(self):

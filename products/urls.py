@@ -29,7 +29,7 @@ urlpatterns = [
     path("<int:pk>/update/", ProductUpdateView.as_view(), name="product-update"),
     path("<int:pk>/delete/", ProductDeleteView.as_view(), name="product-delete"),
     path(
-        "/all/statistics/",
+        "all/statistics/",
         ProductSalesDetailView.as_view(),
         name="all-products-statistics",
     ),

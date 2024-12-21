@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Send Email</h2>
+
+<form method="POST">
+  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+  <!-- Subject -->
+  <p>
+    <label for="id_subject">Email Subject:</label>
+    <input type="text" name="subject" maxlength="100" required id="id_subject">
+  </p>
+
+  <!-- Message -->
+  <p>
+    <label for="id_message">Email Message:</label>
+    <textarea name="message" cols="40" rows="10" required id="id_message"></textarea>
+  </p>
+
+  <!-- Client Number -->
+  <p>
+    <label for="id_client_number">Client Number:</label>
+    <input type="text" name="client_number" id="id_client_number" value="{{ prefilled_client_number|default:'' }}">
+    <span class="helptext">Provide the unique client number to email a specific client.</span>
+  </p>
+
+  <!-- Send to All (Visible to Organizers Only) -->
+  {% if is_organisor %}
+    <p>
+      <label for="id_send_to_all">Send to All:</label>
+      <input type="checkbox" name="send_to_all" id="id_send_to_all" value="true">
+      <span class="helptext">Check this box to send the email to all clients.</span>
+    </p>
+  {% endif %}
+
+  <button type="submit">Send Email</button>
+</form>
+{% endblock %}

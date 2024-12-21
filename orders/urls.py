@@ -23,14 +23,4 @@ urlpatterns = [
         views.OrderConfirmView.as_view(),
         name="order_confirm",
     ),
-    path(
-        "daily-chart/",
-        views.DailyRevenueChartView.as_view(),
-        name="daily-revenue-chart",
-    ),
-    path(
-        "order-completion-rate/",
-        views.OrderCompletionRateView.as_view(),
-        name="order_completion_rate",
-    ),
 ]

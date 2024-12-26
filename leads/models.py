@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.contrib.auth.models import AbstractUser
 from django.dispatch import receiver
-from clients.models import Client
+from clients.models import Client, Contact
 from django.db.models.signals import post_migrate
 from django.apps import apps
 from django.db.models.functions import TruncDay
@@ -205,6 +205,7 @@ def handle_lead_conversion(sender, instance, created, **kwargs):
     Handle actions after a Lead is saved.
     - If a lead is converted, set the conversion_date.
     - If a lead is converted and is of category 'sale', create/update a Client.
+    - Create a contact with category 'Other' with information when a client was created.
     """
     # If the lead is newly created and converted
     if not created and instance.is_converted:
@@ -228,6 +229,14 @@ def handle_lead_conversion(sender, instance, created, **kwargs):
                 print(
                     f"A new client was created for {instance.first_name} {instance.last_name} ({instance.email})."
                 )
+
+                # Create a contact with category 'Other' with info about when the client was created
+                Contact.objects.create(
+                    client=client,
+                    category="Other",
+                    info=f"Client created on {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}.",
+                )
+
             else:
                 print(f"Client with email {instance.email} already exists.")
 

@@ -2,6 +2,16 @@
 
 {% block content %}
 <h1>My Orders</h1>
+
+{% if user.is_organisor %}
+<form method="post" action="">
+    {% csrf_token %}
+    <button type="submit" name="delete_pending_orders" class="btn btn-danger">
+        Delete Pending Orders
+    </button>
+</form>
+{% endif %}
+
 <table>
     <thead>
         <tr>
@@ -22,5 +32,6 @@
         {% endfor %}
     </tbody>
 </table>
+
 <a href="{% url 'orders:order-create' %}">Create New Order</a>
 {% endblock %}

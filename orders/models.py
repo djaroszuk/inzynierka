@@ -6,6 +6,8 @@ from django.db.models import Count
 from django.db.models.functions import TruncDay
 from django.utils import timezone
 from decimal import Decimal
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class OrderManager(models.Manager):
@@ -69,7 +71,7 @@ class Order(models.Model):
         related_name="orders",
         null=True,
         blank=True,
-    )  # Add this
+    )
     offer_token = models.CharField(max_length=255, blank=True, null=True, unique=True)
     objects = OrderManager()
     status = models.CharField(
@@ -85,6 +87,14 @@ class Order(models.Model):
         max_digits=5, decimal_places=2, default=0, help_text="Discount percentage"
     )
 
+    # Preset discount choices in the model
+    DISCOUNT_CHOICES = {
+        "0": Decimal("0.00"),  # No discount
+        "5": Decimal("0.05"),
+        "10": Decimal("0.10"),
+        "15": Decimal("0.15"),
+    }
+
     @property
     def total_price(self):
         """
@@ -94,6 +104,14 @@ class Order(models.Model):
         return sum(
             item.product_price * item.quantity for item in self.order_products.all()
         )
+
+    def get_discount_percentage(self):
+        """
+        Return discount choices in a format suitable for templates or forms.
+        """
+        return [
+            (key, f"{value * 100:.0f}%") for key, value in self.DISCOUNT_CHOICES.items()
+        ]
 
     def __str__(self):
         return f"Order {self.id} for {self.client}"
@@ -152,3 +170,22 @@ class OrderProduct(models.Model):
 
     def __str__(self):
         return f"{self.product_name} (x{self.quantity}) in Order {self.order.id}"
+
+
+@receiver(post_save, sender=Order)
+def update_client_status_on_order_save(sender, instance, **kwargs):
+    """
+    Update the client's status to 'Important' if they meet the threshold
+    for the number of accepted orders.
+    """
+    print(
+        f"Signal triggered for Order ID: {instance.id}"
+    )  # Print to confirm signal is triggered
+
+    client = instance.client  # Get the client associated with the order
+    if client:
+        print(
+            f"Updating status for Client ID: {client.id}"
+        )  # Print to confirm client is found
+        client.update_status()  # Call the update_status method
+        client.save()  # Save the updated client object

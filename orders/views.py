@@ -13,20 +13,41 @@ from django.utils.http import urlencode
 from django.contrib.sites.shortcuts import get_current_site
 import uuid
 from django.core.mail import send_mail
-from django.utils.timezone import now
+from django.utils.timezone import now, timedelta
 from django.db.models.functions import TruncDay
 from django.db.models import Count, Sum, F
 import json
 from decimal import Decimal
 
 
-class OrderListView(generic.ListView):
+class OrderListView(LoginRequiredMixin, generic.ListView):
     model = Order
     template_name = "orders/order_list.html"
     context_object_name = "orders"
 
     def get_queryset(self):
         return Order.objects.select_related("client").all()
+
+    def post(self, request, *args, **kwargs):
+        if request.user.is_organisor and "delete_pending_orders" in request.POST:
+            cutoff_time = now() - timedelta(minutes=1)
+            pending_orders = Order.objects.filter(
+                status="Pending", date_created__lt=cutoff_time
+            )
+
+            # Restore product quantities before deleting orders
+            for order in pending_orders:
+                for order_product in order.order_products.all():
+                    product = order_product.product
+                    if product:
+                        product.stock_quantity += order_product.quantity
+                        product.save()
+
+            count = pending_orders.count()  # Count the orders to delete
+            pending_orders.delete()  # Delete the orders after restoring stock
+            print(f"{count} pending orders older than 48 hours were deleted.")
+
+        return self.get(request, *args, **kwargs)
 
 
 class OrderDetailView(LoginRequiredMixin, generic.DetailView):
@@ -44,13 +65,6 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
     model = Order
     template_name = "orders/order_create.html"
     fields = ["client"]
-
-    DISCOUNT_CHOICES = {
-        "0": Decimal("0.00"),  # No discount
-        "5": Decimal("0.05"),
-        "10": Decimal("0.10"),
-        "15": Decimal("0.15"),
-    }
 
     def get_initial(self):
         """Set the initial value for the client field."""
@@ -71,20 +85,32 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
         """Add the list of products and discount options to the context."""
         context = super().get_context_data(**kwargs)
         context["products"] = Product.objects.all()
-        context["discount_choices"] = [0, 5, 10, 15]  # Discount options
+
+        # Convert discount choices to a list of tuples
+        context["discount_choices"] = [
+            (key, f"{value * 100:.0f}%")
+            for key, value in self.model.DISCOUNT_CHOICES.items()
+        ]
         return context
 
     def form_valid(self, form):
         """Handle creating the order with associated products and a discount."""
-        product_ids = self.request.POST.getlist("product")
-        quantities = self.request.POST.getlist("quantity")
-        discount = self.request.POST.get("discount", "0")  # Default discount to 0
-        discount = self.DISCOUNT_CHOICES.get(discount, Decimal("0.00"))
+        selected_product_ids = self.request.POST.getlist(
+            "product"
+        )  # Get selected product IDs
+        discount = self.request.POST.get("discount", "0")
+        discount = self.model.DISCOUNT_CHOICES.get(discount, Decimal("0.00"))
 
-        # Convert quantities to integers
-        quantities = [int(q) for q in quantities]
+        # Parse quantities tied to selected products
+        selected_products = []
+        for product_id in selected_product_ids:
+            quantity_field = f"quantity_{product_id}"
+            quantity = int(self.request.POST.get(quantity_field, 0))
+            if quantity > 0:
+                selected_products.append((product_id, quantity))
 
-        if not product_ids or not any(q > 0 for q in quantities):
+        # Check if at least one product is selected
+        if not selected_products:
             messages.error(
                 self.request,
                 "Please select at least one product and specify a valid quantity.",
@@ -93,7 +119,8 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
                 self.request, self.template_name, self.get_context_data(form=form)
             )
 
-        for product_id, quantity in zip(product_ids, quantities):
+        # Validate stock for selected products
+        for product_id, quantity in selected_products:
             product = get_object_or_404(Product, pk=product_id)
             if product.stock_quantity < quantity:
                 messages.error(
@@ -104,27 +131,29 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
                     self.request, self.template_name, self.get_context_data(form=form)
                 )
 
+        # Create the order
         order = form.save(commit=False)
         order.agent = self.request.user.agent
         order.discount = discount * 100  # Save discount as percentage
         order.status = "Pending"
         order.save()
 
-        for product_id, quantity in zip(product_ids, quantities):
-            if quantity > 0:
-                product = get_object_or_404(Product, pk=product_id)
-                product.stock_quantity -= quantity
-                product.save()
+        # Create OrderProduct entries for selected products
+        for product_id, quantity in selected_products:
+            product = get_object_or_404(Product, pk=product_id)
+            product.stock_quantity -= quantity
+            product.save()
 
-                # Create the OrderProduct with discounted price
-                OrderProduct.objects.create(
-                    order=order,
-                    product=product,
-                    quantity=quantity,
-                    product_name=product.name,
-                    product_price=None,  # Let the `save` method calculate discounted price
-                )
+            # Create the OrderProduct with discounted price
+            OrderProduct.objects.create(
+                order=order,
+                product=product,
+                quantity=quantity,
+                product_name=product.name,
+                product_price=None,  # Let the `save` method calculate discounted price
+            )
 
+        # Create a Contact entry for the order
         Contact.objects.create(
             client=order.client,
             reason=Contact.ReasonChoices.SALES_OFFER,
@@ -181,8 +210,19 @@ class OrderSummaryView(LoginRequiredMixin, generic.DetailView):
             return redirect("orders:order-list")
 
         elif action == "cancel":
+            # Restore product quantities
+            for order_product in order.order_products.all():
+                product = order_product.product
+                if product:
+                    product.stock_quantity += order_product.quantity
+                    product.save()
+
+            # Delete the order
             order.delete()
-            messages.success(request, "The order has been canceled and deleted.")
+            messages.success(
+                request,
+                "The order has been canceled, and product quantities have been restored.",
+            )
             return redirect("orders:order-list")
 
         messages.error(request, "Invalid action.")

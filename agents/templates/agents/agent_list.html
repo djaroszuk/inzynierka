@@ -2,32 +2,35 @@
 
 {% block content %}
 <section class="text-gray-600 body-font">
-    <div class="container px-5 py-24 mx-auto flex flex-wrap">
-        <div class="w-full mb-6 py-6 flex justify-between items-center border-b border-gray-200">
-            <div>
-                <h1 class="text-4xl text-gray-800">Agents </h1>
-            </div>
-            <div>
-                <a class="text-gray-500 hover:text-blue-500" href="{% url 'agents:agent-create' %}" >Create a new agent.</a>
+    <div class="container px-5 py-16 mx-auto">
+        <div class="w-full mb-8 py-4 flex justify-between items-center border-b border-gray-300">
+            <h1 class="text-3xl font-semibold text-gray-900">Agents</h1>
+            <div class="flex items-center space-x-4">
+                <a class="text-indigo-500 hover:text-indigo-600 font-medium" href="{% url 'agents:agent-create' %}">Create a new agent</a>
+                <form method="get" action="" class="flex items-center space-x-4">
+                    <input type="text" name="q" placeholder="Search by username" class="border border-gray-300 rounded px-4 py-2" value="{{ request.GET.q }}">
+                    <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
+                        Search
+                    </button>
+                </form>
             </div>
         </div>
-        <div class="flex flex-wrap -m-4">
+        <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {% for agent in object_list %}
-          <div class="p-4 lg:w-1/2 md:w-full">
-            <div class="flex border-2 rounded-lg border-gray-200 border-opacity-50 p-8 sm:flex-row flex-col w-96 h-48">
-              <div class="w-16 h-16 sm:mr-8 sm:mb-0 mb-4 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500 flex-shrink-0">
+          <div class="p-4 border rounded-lg shadow-md bg-white hover:shadow-lg transition-shadow">
+            <div class="flex items-center space-x-6">
+              <div class="w-16 h-16 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500">
                 <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-8 h-8" viewBox="0 0 24 24">
                   <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
                 </svg>
               </div>
-              <div class="flex-grow">
-                <h2 class="text-gray-900 text-lg title-font font-medium mb-3">{{agent.user.username}} {{lead.last_name}}</h2>
-                <p class="leading-relaxed text-base overflow-hidden max-h-12">
-                  TODOOOOOOOOOOOOOOOOOO
-                </p>
-                <a href="{% url 'agents:agent-detail' agent.pk %}" class="mt-3 text-indigo-500 inline-flex items-center">
+              <div>
+                <h2 class="text-xl font-medium text-gray-900">{{ agent.user.username }}</h2>
+                <p class="text-gray-600 mt-1">Email: {{ agent.user.email }}</p>
+                <p class="text-gray-600">Date Joined: {{ agent.user.date_joined|date:"F j, Y" }}</p>
+                <a href="{% url 'agents:agent-detail' agent.pk %}" class="mt-4 inline-block text-indigo-500 font-medium hover:underline">
                   View this agent
-                  <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-4 h-4 ml-2" viewBox="0 0 24 24">
+                  <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-4 h-4 ml-1 inline" viewBox="0 0 24 24">
                     <path d="M5 12h14M12 5l7 7-7 7"></path>
                   </svg>
                 </a>
@@ -35,8 +38,7 @@
             </div>
           </div>
           {% endfor %}
-      </div>
-
+        </div>
     </div>
-  </section>
+</section>
 {% endblock content %}

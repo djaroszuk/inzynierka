@@ -58,3 +58,16 @@ class EmailForm(forms.Form):
             )
 
         return cleaned_data
+
+
+class AgentSearchForm(forms.Form):
+    q = forms.CharField(
+        required=False,
+        label="Search Agents",
+        widget=forms.TextInput(
+            attrs={
+                "class": "border border-gray-300 rounded px-4 py-2",
+                "placeholder": "Search by username",
+            }
+        ),
+    )

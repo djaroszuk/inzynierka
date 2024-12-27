@@ -3,7 +3,7 @@ from django.views import generic
 import random
 from django.shortcuts import reverse
 from leads.models import Agent
-from .forms import AgentModelForm, EmailForm
+from .forms import AgentModelForm, EmailForm, AgentSearchForm
 from .mixins import OrganisorAndLoginRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 import json
@@ -22,7 +22,23 @@ class AgentListView(OrganisorAndLoginRequiredMixin, generic.ListView):
     context_object_name = "agents"
 
     def get_queryset(self):
-        return Agent.objects.all
+        """Return a list of agents filtered by the search query."""
+        queryset = Agent.objects.all()
+
+        # Filter by username
+        query = self.request.GET.get("q")
+        if query:
+            queryset = queryset.filter(
+                user__username__icontains=query
+            )  # Case-insensitive search
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        """Add the search form to the context."""
+        context = super().get_context_data(**kwargs)
+        context["form"] = AgentSearchForm(self.request.GET)  # Pre-fill with query data
+        return context
 
 
 class AgentCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):

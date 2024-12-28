@@ -153,9 +153,9 @@ class Agent(models.Model):
 class Lead(models.Model):
     first_name = models.CharField(max_length=20)
     last_name = models.CharField(max_length=20)
-    age = models.IntegerField(default=0)
-    email = models.EmailField(unique=True, blank=True, null=True)
-    phone_number = models.CharField(max_length=9, blank=True, null=True)
+    age = models.IntegerField(default=0, blank=True, null=True)
+    email = models.EmailField(unique=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
     agent = models.ForeignKey("Agent", null=True, blank=True, on_delete=models.SET_NULL)
     category = models.ForeignKey(
         "Category",
@@ -233,8 +233,8 @@ def handle_lead_conversion(sender, instance, created, **kwargs):
                 # Create a contact with category 'Other' with info about when the client was created
                 Contact.objects.create(
                     client=client,
-                    category="Other",
-                    info=f"Client created on {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}.",
+                    reason=Contact.ReasonChoices.OTHER,
+                    description=f"Client created on {now().strftime('%Y-%m-%d %H:%M:%S')}.",
                 )
 
             else:

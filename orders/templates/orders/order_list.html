@@ -1,37 +1,70 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h1>My Orders</h1>
+<section class="text-gray-600 body-font">
+  <div class="container px-5 py-16 mx-auto">
+    <div class="w-full mb-8 py-4 flex justify-between items-center border-b border-gray-300">
+      <h1 class="text-3xl font-semibold text-gray-900">Orders history</h1>
+      <form method="get" action="" class="flex items-center space-x-4">
+        <input type="text" name="q" placeholder="Search by order number" class="border border-gray-300 rounded px-4 py-2" value="{{ request.GET.q }}">
+        <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
+          Search
+        </button>
+      </form>
+    </div>
 
-{% if user.is_organisor %}
-<form method="post" action="">
-    {% csrf_token %}
-    <button type="submit" name="delete_pending_orders" class="btn btn-danger">
-        Delete Pending Orders
-    </button>
-</form>
-{% endif %}
+    <div class="grid gap-6">
+      <div class="overflow-auto">
+        <table class="table-auto w-full text-left whitespace-no-wrap">
+          <thead>
+            <tr>
+              <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100 rounded-tl rounded-bl">
+                <a href="?sort=order_number&direction=asc" class="hover:underline">Order Number</a>
+              </th>
+              <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">
+                <a href="?sort=client&direction=asc" class="hover:underline">Client</a>
+              </th>
+              <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">
+                Client Number
+              </th>
+              <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">
+                <a href="?sort=date_created&direction=desc" class="hover:underline">Date Created</a>
+              </th>
+              <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">
+                Total Price
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for order in orders %}
+            <tr class="border-b border-gray-300">
+              <td class="px-4 py-3">
+                <a href="{% url 'orders:order-detail' order.id %}" class="text-indigo-500 hover:underline">
+                  {{ order.id }}
+                </a>
+              </td>
+              <td class="px-4 py-3">{{ order.client }}</td>
+              <td class="px-4 py-3">{{ order.client.client_number }}</td>
+              <td class="px-4 py-3">{{ order.date_created }}</td>
+              <td class="px-4 py-3 text-lg text-gray-900">{{ order.total_price }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-<table>
-    <thead>
-        <tr>
-            <th>Order Number</th>
-            <th>Client</th>
-            <th>Date Created</th>
-            <th>Total Price</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for order in orders %}
-        <tr>
-            <td><a href="{% url 'orders:order-detail' order.id %}">{{ order.id }}</a></td>
-            <td>{{ order.client }}</td>
-            <td>{{ order.date_created }}</td>
-            <td>{{ order.total_price }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-
-<a href="{% url 'orders:order-create' %}">Create New Order</a>
+    <div class="mt-4">
+      <nav class="flex justify-between">
+        {% if orders.has_previous %}
+        <a href="?page={{ orders.previous_page_number }}" class="text-indigo-500 hover:underline">Previous</a>
+        {% endif %}
+        <span>Page {{ orders.number }} of {{ orders.paginator.num_pages }}</span>
+        {% if orders.has_next %}
+        <a href="?page={{ orders.next_page_number }}" class="text-indigo-500 hover:underline">Next</a>
+        {% endif %}
+      </nav>
+    </div>
+  </div>
+</section>
 {% endblock %}

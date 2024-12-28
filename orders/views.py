@@ -5,7 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from products.models import Product
 from clients.models import Client, Contact
 from datetime import datetime
-from .forms import StatisticsFilterForm
+from .forms import StatisticsFilterForm, OrderSearchForm
 from django.shortcuts import redirect, render, reverse
 from django.contrib import messages
 from django.http import HttpResponseRedirect
@@ -18,15 +18,48 @@ from django.db.models.functions import TruncDay
 from django.db.models import Count, Sum, F
 import json
 from decimal import Decimal
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 class OrderListView(LoginRequiredMixin, generic.ListView):
     model = Order
     template_name = "orders/order_list.html"
     context_object_name = "orders"
+    paginate_by = 25  # Set pagination to 25 orders per page
 
     def get_queryset(self):
-        return Order.objects.select_related("client").all()
+        queryset = Order.objects.select_related("client").order_by("-date_created")
+
+        query = self.request.GET.get("q")
+        if query:
+            try:
+                # Filter by exact match if query is a valid integer
+                query = int(query)
+                queryset = queryset.filter(id=query)
+            except ValueError:
+                # Ignore non-integer queries
+                queryset = queryset.none()
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Get paginated queryset
+        orders = self.get_queryset()
+        paginator = Paginator(orders, self.paginate_by)
+        page = self.request.GET.get("page", 1)
+
+        try:
+            paginated_orders = paginator.page(page)
+        except PageNotAnInteger:
+            paginated_orders = paginator.page(1)
+        except EmptyPage:
+            paginated_orders = paginator.page(paginator.num_pages)
+
+        # Add paginated and searched orders to context
+        context["orders"] = paginated_orders
+        context["search_form"] = OrderSearchForm(self.request.GET)
+        return context
 
     def post(self, request, *args, **kwargs):
         if request.user.is_organisor and "delete_pending_orders" in request.POST:

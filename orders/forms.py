@@ -40,3 +40,16 @@ class StatisticsFilterForm(forms.Form):
                 "%Y-%m-%dT%H:%M"
             )
             self.fields["end_datetime"].initial = now.strftime("%Y-%m-%dT%H:%M")
+
+
+class OrderSearchForm(forms.Form):
+    q = forms.CharField(
+        label="Search by Order Number",
+        required=False,
+        widget=forms.TextInput(
+            attrs={
+                "class": "border rounded px-4 py-2 text-gray-700",
+                "placeholder": "Enter order number",
+            }
+        ),
+    )

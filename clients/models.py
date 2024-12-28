@@ -253,7 +253,7 @@ class Client(models.Model):
         return ltv_data
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name} - Client"
+        return f"{self.first_name} {self.last_name}"
 
 
 class Contact(models.Model):

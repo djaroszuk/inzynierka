@@ -2,118 +2,79 @@
 
 {% block content %}
 <section class="text-gray-600 body-font">
-    <div class="container px-5 py-16 mx-auto flex flex-col">
-      <div class="lg:w-4/6 mx-auto">
-        <div class="flex flex-col sm:flex-row mt-8">
-          <div class="sm:w-1/3 text-center sm:pr-6 sm:py-6">
-            <div class="w-20 h-20 rounded-full inline-flex items-center justify-center bg-gray-200 text-gray-400">
-                <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-10 h-10" viewBox="0 0 24 24">
-                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-            </div>
-            <div class="flex flex-col items-center text-center justify-center mt-4">
-                <h2 class="font-medium title-font text-gray-900 text-lg">{{ client.first_name }} {{ client.last_name }}</h2>
-                <div class="w-12 h-1 bg-indigo-500 rounded mt-2 mb-3"></div>
-                <p class="text-base">{{ client.status }}.</p>
-
-                <!-- Create Contact Button -->
-                <a href="{% url 'agents:send-email' %}?client_number={{ client.client_number }}"
-                   class="flex mx-auto mt-4 text-white bg-indigo-500 border-0 py-1 px-4 focus:outline-none hover:bg-indigo-600 rounded text-sm">
-                   Create Contact
-                </a>
-            </div>
-        </div>
-          <div class="sm:w-2/3 sm:pl-6 sm:py-6 sm:border-l border-gray-200 sm:border-t-0 border-t mt-4 pt-4 sm:mt-0 text-center sm:text-left">
-            <p class="leading-relaxed text-lg mb-3">TODO.</p>
+  <div class="container px-5 py-12 mx-auto flex flex-col">
+    <div class="lg:w-4/6 mx-auto">
+      <div class="flex flex-col sm:flex-row mt-8">
+        <div class="sm:w-1/3 text-center sm:pr-6 sm:py-6">
+          <div class="flex flex-col items-center text-center justify-center mt-4">
+            <h2 class="font-medium title-font text-gray-900 text-3xl">{{ client.first_name }} {{ client.last_name }}</h2>
+            <p class="text-sm text-gray-600 mt-2">Number: {{ client.client_number }}</p>
+            <div class="w-12 h-1 bg-indigo-500 rounded mt-2 mb-3"></div>
+            <p class="text-base">{{ client.status }}.</p>
+            <!-- Create Contact Button -->
+            <a href="{% url 'agents:send-email' %}?client_number={{ client.client_number }}" class="flex mx-auto mt-4 text-white bg-indigo-500 border-0 py-1 px-4 focus:outline-none hover:bg-indigo-600 rounded text-sm">
+              Create Contact
+            </a>
+            <!-- Update Client Button -->
+            <a href="{% url 'clients:client-update' client.client_number %}" class="flex mx-auto mt-4 text-white bg-indigo-500 border-0 py-1 px-4 focus:outline-none hover:bg-blue-600 rounded text-sm">
+              Update Details
             </a>
           </div>
         </div>
+        <div class="sm:w-2/3 sm:pl-6 sm:py-6 sm:border-l border-gray-200 sm:border-t-0 border-t mt-4 pt-4 sm:mt-0 text-center sm:text-left">
+          <h2 class="text-2xl font-medium text-gray-900 mb-4">Client Overview</h2>
+          <ul class="list-disc pl-6 text-gray-700 leading-relaxed">
+            <li>Total Revenue: ${{ client.total_revenue }}</li>
+            <li>Total Products Sold: {{ client.total_products_sold }}</li>
+            <li>Total Orders: {{ client.orders.count }}</li>
+          </ul>
+          <a href="{% url 'clients:client-statistics' client.client_number %}" class="flex mx-auto mt-8 text-white bg-indigo-500 border-0 py-2 px-6 focus:outline-none hover:bg-indigo-600 rounded text-sm">
+            View Detailed Statistics
+            <svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M12 5l7 7-7 7"></path>
+            </svg>
+          </a>
+        </div>
       </div>
     </div>
+  </div>
 </section>
+
 <section class="text-gray-600 body-font">
-    <div class="container px-5 py-16 mx-auto">
-      <div class="flex flex-wrap -m-4">
-        <div class="xl:w-1/3 md:w-1/2 p-4">
-          <div class="border border-gray-200 p-4 rounded-lg">
-            <div class="w-10 h-10 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500 mb-4">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-6 h-6" viewBox="0 0 24 24">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-              </svg>
-            </div>
-            <h2 href class="text-lg text-gray-900 font-medium title-font mb-2">Shooting Stars</h2>
-            <p  class="leading-relaxed text-base">Fingerstache flexitarian street art 8-bit waist co, subway tile poke farm.</p>
-            <button href="#" class="flex mx-auto mt-12 text-white bg-indigo-500 border-0 py-1 px-4 focus:outline-none hover:bg-indigo-600 rounded text-sm ml-auto">Button</button>
-          </div>
-        </div>
-        <div class="xl:w-1/3 md:w-1/2 p-4">
-          <div class="border border-gray-200 p-4 rounded-lg">
-            <div class="w-10 h-10 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500 mb-4">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-6 h-6" viewBox="0 0 24 24">
-                <circle cx="6" cy="6" r="3"></circle>
-                <circle cx="6" cy="18" r="3"></circle>
-                <path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"></path>
-              </svg>
-            </div>
-            <h2 class="text-lg text-gray-900 font-medium title-font mb-2">historia zamowien</h2>
-            <p class="leading-relaxed text-base">Fingerstache flexitarian street art 8-bit waist co, subway tile poke farm.</p>
-            <a href="{% url 'orders:client-orders' client.client_number%}"   class="flex mx-auto mt-12 text-white bg-indigo-500 border-0 py-1 px-4 focus:outline-none hover:bg-indigo-600 rounded text-sm ml-auto">Button</a>
-          </div>
-        </div>
-        <div class="xl:w-1/3 md:w-1/2 p-4">
-          <div class="border border-gray-200 p-4 rounded-lg">
-            <div class="w-10 h-10 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500 mb-4">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-6 h-6" viewBox="0 0 24 24">
-                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-            </div>
-            <h2 class="text-lg text-gray-900 font-medium title-font mb-2">staty</h2>
-            <p class="leading-relaxed text-base">Fingerstache flexitarian street art 8-bit waist co, subway tile poke farm.</p>
-            <a href="{% url 'clients:client-statistics' client.client_number %}"  class="flex mx-auto mt-12 text-white bg-indigo-500 border-0 py-1 px-4 focus:outline-none hover:bg-indigo-600 rounded text-sm ml-auto">Button</a>
-          </div>
-        </div>
-        <div class="xl:w-1/3 md:w-1/2 p-4">
-          <div class="border border-gray-200 p-4 rounded-lg">
-            <div class="w-10 h-10 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500 mb-4">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-6 h-6" viewBox="0 0 24 24">
-                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"></path>
-              </svg>
-            </div>
-            <h2 class="text-lg text-gray-900 font-medium title-font mb-2">Contact history</h2>
-            <p class="leading-relaxed text-base">Fingerstache flexitarian street art 8-bit waist co, subway tile poke farm.</p>
-            <a href="{% url 'clients:contact-list' client.client_number %}" class="flex mx-auto mt-12 text-white bg-indigo-500 border-0 py-1 px-4 focus:outline-none hover:bg-indigo-600 rounded text-sm ml-auto">Button</a>
-          </div>
-          </div>
-        </div>
-        <div class="xl:w-1/3 md:w-1/2 p-4">
-          <div class="border border-gray-200 p-4 rounded-lg">
-            <div class="w-10 h-10 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500 mb-4">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-6 h-6" viewBox="0 0 24 24">
-                <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
-              </svg>
-            </div>
-            <h2 class="text-lg text-gray-900 font-medium title-font mb-2">update</h2>
-            <p class="leading-relaxed text-base">Fingerstache flexitarian street art 8-bit waist co, subway tile poke farm.</p>
-            <a href="{% url 'clients:client-update' client.client_number %}" class="flex mx-auto mt-12 text-white bg-indigo-500 border-0 py-1 px-4 focus:outline-none hover:bg-indigo-600 rounded text-sm ml-auto">Button</a>
-          </div>
-        </div>
-        <div class="xl:w-1/3 md:w-1/2 p-4">
-          <div class="border border-gray-200 p-4 rounded-lg">
-            <div class="w-10 h-10 inline-flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500 mb-4">
-              <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-6 h-6" viewBox="0 0 24 24">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
-            </div>
-            <h2 class="text-lg text-gray-900 font-medium title-font mb-2">delete</h2>
-            <p class="leading-relaxed text-base">Fingerstache flexitarian street art 8-bit waist co, subway tile poke farm.</p>
-            <a href="{% url 'clients:client-delete' client.client_number %}" class="flex mx-auto mt-12 text-white bg-indigo-500 border-0 py-1 px-4 focus:outline-none hover:bg-indigo-600 rounded text-sm ml-auto">Button</a>
-          </div>
+  <div class="container px-5 py-8 mx-auto">
+    <h2 class="text-3xl font-medium text-gray-900 mb-8 text-center">Quick Actions</h2>
+    <div class="flex flex-wrap -m-4 justify-between">
+      <!-- Contact History -->
+      <div class="w-1/3 p-4">
+        <div class="border border-gray-200 p-6 rounded-lg hover:shadow-lg transition-shadow duration-300 h-full">
+          <h2 class="text-lg text-gray-900 font-medium title-font mb-2">Contact History</h2>
+          <p class="leading-relaxed text-base">View all historical interactions with the client.</p>
+          <a href="{% url 'clients:contact-list' client.client_number %}" class="flex mx-auto mt-8 text-white bg-indigo-500 border-0 py-2 px-6 focus:outline-none hover:bg-indigo-600 rounded text-sm">
+            View History
+          </a>
         </div>
       </div>
-
+      <!-- Order History -->
+      <div class="w-1/3 p-4">
+        <div class="border border-gray-200 p-6 rounded-lg hover:shadow-lg transition-shadow duration-300 h-full">
+          <h2 class="text-lg text-gray-900 font-medium title-font mb-2">Order History</h2>
+          <p class="leading-relaxed text-base">Browse the client's order history and details.</p>
+          <a href="{% url 'orders:client-orders' client.client_number %}" class="flex mx-auto mt-8 text-white bg-indigo-500 border-0 py-2 px-6 focus:outline-none hover:bg-indigo-600 rounded text-sm">
+            View Orders
+          </a>
+        </div>
+      </div>
+      <!-- Delete Client -->
+      <div class="w-1/3 p-4">
+        <div class="border border-gray-200 p-6 rounded-lg hover:shadow-lg transition-shadow duration-300 h-full">
+          <h2 class="text-lg text-gray-900 font-medium title-font mb-2">Delete Client</h2>
+          <p class="leading-relaxed text-base"> Remove the client and associated data.</p>
+          <a href="{% url 'clients:client-delete' client.client_number %}" class="flex mx-auto mt-8 text-white bg-red-500 border-0 py-2 px-6 focus:outline-none hover:bg-red-600 rounded text-sm">
+            Delete Client
+          </a>
+        </div>
+      </div>
     </div>
+  </div>
 </section>
-
 {% endblock %}

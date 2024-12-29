@@ -45,7 +45,7 @@ except (OperationalError, ProgrammingError):
 
 class CategoryFilterForm(forms.Form):
     category = forms.ChoiceField(
-        choices=CATEGORY_CHOICES,
+        choices=[("", "-------")] + CATEGORY_CHOICES,
         required=False,
     )
 

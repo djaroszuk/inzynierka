@@ -3,11 +3,19 @@
 {% block content %}
 <section class="text-gray-600 body-font">
     <div class="container px-5 py-24 mx-auto">
-        <div class="flex flex-col text-center w-full mb-20">
+        <div class="w-full mb-8 py-4 flex justify-between items-center border-b border-gray-300">
             <h1 class="sm:text-3xl text-2xl font-medium title-font text-gray-900">LEADS</h1>
-            <div class="py-2 border-t border-gray-300 mt-3"></div>
 
-            <div class="flex justify-center mt-4 space-x-4">
+            <form method="get" action="{% url 'leads:lead-list' %}" class="flex items-center space-x-4">
+                {% csrf_token %}
+                <label for="category" class="font-medium">Filter by Category:</label>
+                {{ form.category }}
+                <button type="submit" class="bg-indigo-500 text-white py-2 px-4 rounded">Apply Filter</button>
+            </form>
+        </div>
+
+        <div class="flex justify-end mb-6">
+            <div class="flex space-x-4">
                 <a class="text-gray-500 hover:text-blue-500" href="{% url 'leads:category-list' %}">
                     View categories
                 </a>
@@ -18,27 +26,18 @@
                 <a href="{% url 'leads:lead-upload'%}" class="text-gray-500 hover:text-blue-500">Add many leads from Excel file</a>
                 {% endif %}
             </div>
-
-                        <!-- Category Filter Form -->
-                        <form method="get" action="{% url 'leads:lead-list' %}">
-                            {% csrf_token %}
-                            <div class="flex items-center space-x-4">
-                                <label for="category" class="font-medium">Filter by Category:</label>
-                                {{ form.category }}
-                                <button type="submit" class="bg-indigo-500 text-white py-2 px-4 rounded">Apply Filter</button>
-                            </div>
-                        </form>
-
-            <!-- Take Lead Button (for agents only) -->
-            {% if not request.user.is_organisor %}
-            <form method="POST" action="{% url 'leads:lead-list' %}" class="mt-6">
-                {% csrf_token %}
-                <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded">
-                    Take Oldest Unassigned Lead
-                </button>
-            </form>
-            {% endif %}
         </div>
+
+        <!-- Take Lead Button (for agents only) -->
+        {% if not request.user.is_organisor %}
+        <form method="POST" action="{% url 'leads:lead-list' %}" class="mt-6">
+            {% csrf_token %}
+            <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded">
+                Take Oldest Unassigned Lead
+            </button>
+        </form>
+        {% endif %}
+
         {% if messages %}
         <div class="container mx-auto my-4">
             {% for message in messages %}
@@ -51,10 +50,11 @@
             {% endfor %}
         </div>
         {% endif %}
+
         {% if leads %}
         <div class="flex flex-wrap -m-4">
             {% for lead in leads %}
-            <div class="p-4 md:w-1/3">
+            <div class="p-4 w-full md:w-1/3">
                 <div class="flex rounded-lg h-full bg-gray-100 p-8 flex-col">
                     <div class="flex items-center mb-3">
                         <h2 class="text-gray-900 text-lg title-font font-medium">
@@ -73,7 +73,7 @@
                             </svg>
                         </a>
                         {% if lead.agent %}
-                        <p class="mt-4 text-gray-500">Assigned to: {{ lead.agent.user.get_full_name }}</p>
+                        <p class="mt-4 text-gray-500">Responsible: {{ lead.agent.user.username }}</p>
                         {% endif %}
                     </div>
                 </div>

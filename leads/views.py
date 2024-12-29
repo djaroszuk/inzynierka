@@ -31,7 +31,7 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
 
     def get_queryset(self):
         user = self.request.user
-        category_name = self.request.GET.get("category", "new")
+        category_name = self.request.GET.get("category")
         if user.is_organisor:
             queryset = Lead.objects.all()
         else:

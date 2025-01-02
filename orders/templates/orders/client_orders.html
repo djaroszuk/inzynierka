@@ -9,14 +9,19 @@
     <div class="w-full mb-8 py-4 flex justify-between items-center border-b border-gray-300">
       <div>
         <h1 class="text-3xl font-semibold text-gray-900">Orders for {{ client.name }}</h1>
-        <p class="text-gray-600">Client Number: {{ client_number }}</p>
+        <p class="text-gray-600">Client Number: {{ client.client_number }}</p>
       </div>
-      <form method="get" action="" class="flex items-center space-x-4">
-        <input type="text" name="q" placeholder="Search by order number" class="border border-gray-300 rounded px-4 py-2" value="{{ request.GET.q }}">
-        <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
-          Search
-        </button>
-      </form>
+      <div class="flex items-center space-x-4">
+        <a href="{% url 'orders:order-create' %}?client_number={{ client.client_number }}" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+          Add Order
+        </a>
+        <form method="get" action="" class="flex items-center space-x-4">
+          <input type="text" name="q" placeholder="Search by order number" class="border border-gray-300 rounded px-4 py-2" value="{{ request.GET.q }}">
+          <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
+            Search
+          </button>
+        </form>
+      </div>
     </div>
 
     <div class="grid gap-6">

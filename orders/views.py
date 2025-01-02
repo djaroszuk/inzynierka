@@ -332,10 +332,10 @@ class OrderConfirmView(generic.View):
 
     def post(self, request, *args, **kwargs):
         order_id = kwargs["order_id"]
-        action = request.POST.get("action")
         token = request.POST.get("token")
+        action = request.POST.get("action")
 
-        # Get the order and validate the token
+        # Pobierz zamówienie i zweryfikuj token
         order = get_object_or_404(Order, pk=order_id)
 
         if order.offer_token != token:
@@ -343,38 +343,71 @@ class OrderConfirmView(generic.View):
             return redirect("orders:order-list")
 
         if action == "accept":
-            # Accept the offer and change the order status
+            # Akceptacja zamówienia
             order.status = "Accepted"
             order.save()
-            messages.success(request, "You have accepted the offer.")
 
-            # Create a Contact instance for follow-up
-            Contact.objects.create(
-                client=order.client,  # Link the contact to the order's client
-                reason=Contact.ReasonChoices.FOLLOW_UP,  # Set reason to "Follow-up"
-                description=f"Order #{order.id} was accepted.",  # Description mentioning acceptance
-                contact_date=now(),  # Automatically set to the current date and time
-                user=request.user.userprofile,  # Assuming the user has a UserProfile
-            )
-        elif action == "deny":
-            # Deny the offer and delete the order
-            order.status = "Canceled"
-            order.save()
-            # Return the products to stock
-            for order_product in order.order_products.all():
-                product = order_product.product
-                product.stock_quantity += (
-                    order_product.quantity
-                )  # Increase the stock by the quantity ordered
-                product.save()  # Save the product with the updated stock
+            # Wyślij e-mail z informacjami o płatności
+            self.send_payment_email(order)
 
             messages.success(
-                request, "You have denied the offer and the order has been canceled."
+                request, "The offer has been accepted. A payment email has been sent."
+            )
+        elif action == "deny":
+            # Odrzucenie zamówienia
+            order.status = "Canceled"
+            order.save()
+
+            # Przywrócenie produktów do stanu magazynowego
+            for order_product in order.order_products.all():
+                product = order_product.product
+                product.stock_quantity += order_product.quantity
+                product.save()
+
+            messages.success(
+                request, "The offer has been denied, and the order has been canceled."
             )
         else:
             messages.error(request, "Invalid action.")
 
         return redirect("orders:order-list")
+
+    def send_payment_email(self, order):
+        """Wyślij e-mail z informacjami o płatności."""
+        subject = f"Payment Details for Order #{order.id}"
+        account_number = "0000 0000 0000 0000"
+        client_number = (
+            order.client.client_number
+        )  # Zakładam, że klient ma pole `client_number`
+        total_price = order.total_price  # Zakładam, że zamówienie ma pole `total_price`
+
+        message = f"""
+        Dear {order.client.first_name},
+
+        Thank you for accepting the offer for your order #{order.id}.
+
+        Please make a payment to the following account number:
+        Account Number: {account_number}
+
+        In the payment title, please include:
+        Client Number: {client_number}
+        Order Number: {order.id}
+
+        Total Amount: {total_price} USD
+
+        Thank you for your business.
+
+        Best regards,
+        Your Company Name
+        """
+
+        send_mail(
+            subject,
+            message,
+            "from@example.com",  # Twój adres e-mail
+            [order.client.email],
+            fail_silently=False,
+        )
 
 
 class OrderStatisticsView(generic.TemplateView):

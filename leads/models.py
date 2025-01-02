@@ -167,6 +167,7 @@ class Lead(models.Model):
     is_converted = models.BooleanField(default=False)
     date_created = models.DateTimeField(auto_now_add=True)
     conversion_date = models.DateTimeField(null=True, blank=True)
+    comment = models.TextField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.first_name} {self.last_name}"

@@ -55,3 +55,9 @@ class LeadUploadForm(forms.Form):
         label="Upload Excel File",
         widget=forms.ClearableFileInput(attrs={"class": "form-control"}),
     )
+
+
+class LeadCommentForm(forms.ModelForm):
+    class Meta:
+        model = Lead
+        fields = ["comment"]

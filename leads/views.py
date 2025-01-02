@@ -111,12 +111,17 @@ class LeadDetailView(LoginRequiredMixin, generic.DetailView):
 
     def get_queryset(self):
         user = self.request.user
-
         if user.is_organisor:
             queryset = Lead.objects.all()
         else:
             queryset = Lead.objects.filter(agent__user=user)
         return queryset
+
+    def post(self, request, *args, **kwargs):
+        lead = self.get_object()  # Retrieve the lead instance
+        lead.comment = request.POST.get("comment", lead.comment)  # Update the comment
+        lead.save()  # Save the updated lead
+        return render(request, self.template_name, {"lead": lead})
 
 
 class LeadUpdateView(LoginRequiredMixin, generic.UpdateView):

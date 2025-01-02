@@ -80,7 +80,17 @@ class AgentUpdateView(OrganisorAndLoginRequiredMixin, generic.UpdateView):
         return reverse("agents:agent-list")
 
     def get_queryset(self):
-        return Agent.objects.all()
+        # Query the Agent model for the specific agent
+        return Agent.objects.select_related(
+            "user"
+        )  # Use select_related for efficiency with related `user` data
+
+    def get_form_kwargs(self):
+        # Pass the `instance` of the associated User to the form
+        kwargs = super().get_form_kwargs()
+        agent = self.get_object()
+        kwargs["instance"] = agent.user  # Ensures the form updates the User model
+        return kwargs
 
 
 class AgentDeleteView(OrganisorAndLoginRequiredMixin, generic.DeleteView):

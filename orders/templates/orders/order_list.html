@@ -5,12 +5,22 @@
   <div class="container px-5 py-16 mx-auto">
     <div class="w-full mb-8 py-4 flex justify-between items-center border-b border-gray-300">
       <h1 class="text-3xl font-semibold text-gray-900">Orders history</h1>
-      <form method="get" action="" class="flex items-center space-x-4">
-        <input type="text" name="q" placeholder="Search by order number" class="border border-gray-300 rounded px-4 py-2" value="{{ request.GET.q }}">
-        <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
-          Search
-        </button>
-      </form>
+      <div class="flex items-center space-x-4">
+        {% if user.is_organisor %}
+        <form method="post" action="" class="flex">
+          {% csrf_token %}
+          <button name="delete_pending_orders" type="submit" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
+            Delete Pending Orders
+          </button>
+        </form>
+        {% endif %}
+        <form method="get" action="" class="flex items-center space-x-4">
+          <input type="text" name="q" placeholder="Search by order number" class="border border-gray-300 rounded px-4 py-2" value="{{ request.GET.q }}">
+          <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
+            Search
+          </button>
+        </form>
+      </div>
     </div>
 
     <div class="grid gap-6">
@@ -33,6 +43,9 @@
               <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">
                 Total Price
               </th>
+              <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">
+                Status
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -45,8 +58,9 @@
               </td>
               <td class="px-4 py-3">{{ order.client }}</td>
               <td class="px-4 py-3">{{ order.client.client_number }}</td>
-              <td class="px-4 py-3">{{ order.date_created }}</td>
+              <td class="px-4 py-3">{{ order.date_created|date:"d-m-Y H:i" }}</td>
               <td class="px-4 py-3 text-lg text-gray-900">{{ order.total_price }}</td>
+              <td class="px-4 py-3">{{ order.status }}</td>
             </tr>
             {% endfor %}
           </tbody>

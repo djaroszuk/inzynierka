@@ -1,33 +1,46 @@
 {% extends "base.html" %}
 
 {% block content %}
-<a href="{% url 'clients:client-detail' client.client_number %}">Go back to client</a>
-<h2>Contact History for {{ client.first_name }} {{ client.last_name }}</h2>
+<a href="{% url 'clients:client-detail' client.client_number %}" class="text-indigo-500 inline-flex items-center mb-4">
+    Go back to client
+</a>
+<h2 class="text-3xl font-medium text-gray-900 title-font mb-6">
+    Contact History for {{ client.first_name }} {{ client.last_name }}
+</h2>
 
-{% if contacts.exists %}
-<table>
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Reason</th>
-            <th>Description</th>
-            <th>Made by</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for contact in contacts %}
-        <tr>
-            <td>{{ contact.contact_date }}</td>
-            <td>{{ contact.get_reason_display }}</td>
-            <td>{{ contact.description }}</td>
-            <td>{{ contact.user.user.username }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<p>No contact history available for this client.</p>
-{% endif %}
-
-<a href="{% url 'clients:contact-create' client.client_number %}">Add New Contact</a>
+<section class="text-gray-600 body-font overflow-hidden">
+    <div class="container px-5 py-6 mx-auto">
+        {% if contacts.exists %}
+        <div class="-my-8 divide-y-2 divide-gray-100">
+            {% for contact in contacts %}
+            <div class="py-8 flex flex-wrap md:flex-nowrap">
+                <div class="md:w-64 md:mb-0 mb-6 flex-shrink-0 flex flex-col">
+                    <span class="font-semibold title-font text-gray-700">{{ contact.get_reason_display }}</span>
+                    <span class="mt-1 text-gray-500 text-sm">{{ contact.contact_date }}</span>
+                </div>
+                <div class="md:flex-grow">
+                    <h2 class="text-2xl font-medium text-gray-900 title-font mb-2">
+                        {{ contact.description|default:"No description provided" }}
+                    </h2>
+                    <p class="leading-relaxed text-sm text-gray-500">
+                        Made by: {{ contact.user.user.username }}
+                    </p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500">No contact history available for this client.</p>
+        {% endif %}
+        <div class="mt-6">
+            <a href="{% url 'clients:contact-create' client.client_number %}" class="text-indigo-500 inline-flex items-center">
+                Add New Contact
+                <svg class="w-4 h-4 ml-2" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14"></path>
+                    <path d="M12 5l7 7-7 7"></path>
+                </svg>
+            </a>
+        </div>
+    </div>
+</section>
 {% endblock %}

@@ -25,7 +25,7 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
     model = Order
     template_name = "orders/order_list.html"
     context_object_name = "orders"
-    paginate_by = 25  # Set pagination to 25 orders per page
+    paginate_by = 15  # Set pagination to 25 orders per page
 
     def get_queryset(self):
         queryset = Order.objects.select_related("client").order_by("-date_created")
@@ -81,6 +81,52 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
             print(f"{count} pending orders older than 48 hours were deleted.")
 
         return self.get(request, *args, **kwargs)
+
+
+class ClientOrdersView(generic.ListView):
+    model = Order
+    template_name = "orders/client_orders.html"
+    context_object_name = "orders"
+    paginate_by = 15  # Same pagination as OrderListView
+
+    def get_queryset(self):
+        # Filter orders by the specific client
+        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
+        queryset = Order.objects.filter(client=client).order_by("-date_created")
+
+        # Search functionality (same as in OrderListView)
+        query = self.request.GET.get("q")
+        if query:
+            try:
+                query = int(query)  # Filter by exact match if query is an integer
+                queryset = queryset.filter(id=query)
+            except ValueError:
+                queryset = queryset.none()
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Add client information to the context
+        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
+        context["client"] = client
+        context["client_number"] = client.client_number
+
+        # Add paginated orders to context (same as in OrderListView)
+        orders = self.get_queryset()
+        paginator = Paginator(orders, self.paginate_by)
+        page = self.request.GET.get("page", 1)
+
+        try:
+            paginated_orders = paginator.page(page)
+        except PageNotAnInteger:
+            paginated_orders = paginator.page(1)
+        except EmptyPage:
+            paginated_orders = paginator.page(paginator.num_pages)
+
+        context["orders"] = paginated_orders
+        context["search_form"] = OrderSearchForm(self.request.GET)  # Retain search form
+        return context
 
 
 class OrderDetailView(LoginRequiredMixin, generic.DetailView):
@@ -329,27 +375,6 @@ class OrderConfirmView(generic.View):
             messages.error(request, "Invalid action.")
 
         return redirect("orders:order-list")
-
-
-class ClientOrdersView(generic.ListView):
-    model = Order
-    template_name = "orders/client_orders.html"
-    context_object_name = "orders"
-
-    def get_queryset(self):
-        # Get the client by client_id from the URL
-        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
-
-        # Filter orders by the client
-        return Order.objects.filter(client=client)
-
-    def get_context_data(self, **kwargs):
-        # Add client information to the context for use in the template
-        context = super().get_context_data(**kwargs)
-        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
-        context["client"] = client  # Add the client object to the context
-        context["client_number"] = client.client_number  # Add client_number explicitly
-        return context
 
 
 class OrderStatisticsView(generic.TemplateView):

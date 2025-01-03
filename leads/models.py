@@ -155,7 +155,7 @@ class Lead(models.Model):
     last_name = models.CharField(max_length=20)
     age = models.IntegerField(default=0, blank=True, null=True)
     email = models.EmailField(unique=True)
-    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    phone_number = models.CharField(max_length=15)
     agent = models.ForeignKey("Agent", null=True, blank=True, on_delete=models.SET_NULL)
     category = models.ForeignKey(
         "Category",

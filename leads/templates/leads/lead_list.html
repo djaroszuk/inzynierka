@@ -6,37 +6,54 @@
         <div class="w-full mb-8 py-4 flex justify-between items-center border-b border-gray-300">
             <h1 class="sm:text-3xl text-2xl font-medium title-font text-gray-900">LEADS</h1>
 
-            <form method="get" action="{% url 'leads:lead-list' %}" class="flex items-center space-x-4">
-                {% csrf_token %}
-                <label for="category" class="font-medium">Filter by Category:</label>
-                {{ form.category }}
-                <button type="submit" class="bg-indigo-500 text-white py-2 px-4 rounded">Apply Filter</button>
-            </form>
+            <div class="flex items-center space-x-4">
+                <form method="get" action="{% url 'leads:lead-list' %}" class="flex items-center space-x-4">
+                    {% csrf_token %}
+                    <label for="category" class="font-medium">Filter by Category:</label>
+                    {{ form.category }}
+
+                    <!-- Add checkbox for unassigned leads only for organisor -->
+                    {% if request.user.is_organisor %}
+                    <label for="unassigned_only" class="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            id="unassigned_only"
+                            name="unassigned_only"
+                            value="true"
+                            {% if request.GET.unassigned_only %}checked{% endif %}
+                            class="ml-2"
+                        >
+                        <span>Unassigned Only</span>
+                    </label>
+                    {% endif %}
+
+                    <button type="submit" class="bg-indigo-500 text-white py-2 px-4 rounded">Apply Filter</button>
+                </form>
+
+                {% if not request.user.is_organisor %}
+                <form method="POST" action="{% url 'leads:lead-list' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded">
+                        Take Oldest Unassigned Lead
+                    </button>
+                </form>
+                {% endif %}
+            </div>
         </div>
 
         <div class="flex justify-end mb-6">
             <div class="flex space-x-4">
-                <a class="text-gray-500 hover:text-blue-500" href="{% url 'leads:category-list' %}">
-                    View categories
-                </a>
                 {% if request.user.is_organisor %}
                 <a href="{% url 'leads:lead-create' %}" class="text-gray-500 hover:text-blue-500">
                     Create New Lead
+                </a>
+                <a class="text-gray-500 hover:text-blue-500" href="{% url 'leads:category-list' %}">
+                    View categories
                 </a>
                 <a href="{% url 'leads:lead-upload'%}" class="text-gray-500 hover:text-blue-500">Add many leads from Excel file</a>
                 {% endif %}
             </div>
         </div>
-
-        <!-- Take Lead Button (for agents only) -->
-        {% if not request.user.is_organisor %}
-        <form method="POST" action="{% url 'leads:lead-list' %}" class="mt-6">
-            {% csrf_token %}
-            <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded">
-                Take Oldest Unassigned Lead
-            </button>
-        </form>
-        {% endif %}
 
         {% if messages %}
         <div class="container mx-auto my-4">
@@ -74,6 +91,8 @@
                         </a>
                         {% if lead.agent %}
                         <p class="mt-4 text-gray-500">Responsible: {{ lead.agent.user.username }}</p>
+                        {% else %}
+                        <p class="mt-4 text-gray-500">Responsible: Unassigned</p>
                         {% endif %}
                     </div>
                 </div>

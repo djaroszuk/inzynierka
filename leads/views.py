@@ -31,15 +31,26 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
 
     def get_queryset(self):
         user = self.request.user
-        category_name = self.request.GET.get("category")
+        category_name = self.request.GET.get(
+            "category", "new"
+        )  # Default to "new" category
+        unassigned_only = self.request.GET.get(
+            "unassigned_only"
+        )  # Check for unassigned-only filter
+
         if user.is_organisor:
             queryset = Lead.objects.all()
         else:
+            # For agents, filter leads assigned to them
             queryset = Lead.objects.filter(agent__user=user)
 
-        # Apply category filter
+        # Apply additional category filter if specified in the request
         if category_name:
             queryset = queryset.filter(category__name=category_name)
+
+        # Filter for unassigned leads if unassigned_only is selected
+        if unassigned_only:
+            queryset = queryset.filter(agent__isnull=True)
 
         return queryset
 
@@ -50,9 +61,14 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
         # Category filter form
         context["form"] = CategoryFilterForm(self.request.GET)
 
-        # If the user is an organisor, show unassigned leads
+        # Include the unassigned-only filter checkbox state
+        context["unassigned_only"] = self.request.GET.get("unassigned_only", False)
+
+        # If the user is an organiser, show unassigned leads
         if user.is_organisor:
-            unassigned_leads = Lead.objects.filter(agent__isnull=True)
+            unassigned_leads = Lead.objects.filter(
+                agent__isnull=True, category__name="new"
+            )
             context.update({"unassigned_leads": unassigned_leads})
 
         return context
@@ -60,9 +76,11 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
     def post(self, request, *args, **kwargs):
         user = self.request.user
         if not user.is_organisor:  # Only agents can take a lead
-            # Find the oldest unassigned lead for the agent's organization
+            # Find the oldest unassigned lead in the "new" category
             oldest_unassigned_lead = (
-                Lead.objects.filter(agent__isnull=True).order_by("date_created").first()
+                Lead.objects.filter(agent__isnull=True, category__name="new")
+                .order_by("date_created")
+                .first()
             )
 
             if oldest_unassigned_lead:

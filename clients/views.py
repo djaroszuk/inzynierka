@@ -13,10 +13,14 @@ import json
 from django.core.serializers.json import DjangoJSONEncoder
 
 
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+
+
 class ClientListView(LoginRequiredMixin, generic.ListView):
     model = Client
     template_name = "clients/client_list.html"
     context_object_name = "clients"
+    paginate_by = 2  # Number of items per page
 
     def get_queryset(self):
         """Return a list of clients filtered by the search query."""
@@ -51,8 +55,21 @@ class ClientListView(LoginRequiredMixin, generic.ListView):
         return queryset
 
     def get_context_data(self, **kwargs):
-        """Add the search form to the context."""
+        """Add the search form and pagination to the context."""
         context = super().get_context_data(**kwargs)
+        queryset = self.get_queryset()
+
+        paginator = Paginator(queryset, self.paginate_by)
+        page = self.request.GET.get("page")
+
+        try:
+            clients = paginator.page(page)
+        except PageNotAnInteger:
+            clients = paginator.page(1)
+        except EmptyPage:
+            clients = paginator.page(paginator.num_pages)
+
+        context["clients"] = clients
         context["form"] = ClientSearchForm(self.request.GET)  # Pre-fill with query data
         return context
 

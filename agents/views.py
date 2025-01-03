@@ -12,6 +12,7 @@ from clients.models import Client, Contact
 from django.utils.timezone import now
 from django.shortcuts import get_object_or_404
 
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 from orders.forms import StatisticsFilterForm
 from decimal import Decimal
@@ -20,6 +21,7 @@ from decimal import Decimal
 class AgentListView(OrganisorAndLoginRequiredMixin, generic.ListView):
     template_name = "agents/agent_list.html"
     context_object_name = "agents"
+    paginate_by = 15  # Set pagination to 10 agents per page
 
     def get_queryset(self):
         """Return a list of agents filtered by the search query."""
@@ -32,11 +34,25 @@ class AgentListView(OrganisorAndLoginRequiredMixin, generic.ListView):
                 user__username__icontains=query
             )  # Case-insensitive search
 
-        return queryset
+        return queryset.order_by("user__username")  # Ensure consistent ordering
 
     def get_context_data(self, **kwargs):
-        """Add the search form to the context."""
+        """Add the search form and pagination to the context."""
         context = super().get_context_data(**kwargs)
+
+        # Get paginated queryset
+        agents = self.get_queryset()
+        paginator = Paginator(agents, self.paginate_by)
+        page = self.request.GET.get("page", 1)
+
+        try:
+            paginated_agents = paginator.page(page)
+        except PageNotAnInteger:
+            paginated_agents = paginator.page(1)
+        except EmptyPage:
+            paginated_agents = paginator.page(paginator.num_pages)
+
+        context["agents"] = paginated_agents  # Add paginated agents to context
         context["form"] = AgentSearchForm(self.request.GET)  # Pre-fill with query data
         return context
 

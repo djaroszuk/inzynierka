@@ -14,6 +14,7 @@ from .forms import (
     LeadUploadForm,
 )
 from django.shortcuts import render, reverse, redirect
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
 class SignupView(generic.CreateView):
@@ -28,55 +29,79 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
     model = Lead
     template_name = "leads/lead-list.html"
     context_object_name = "leads"
+    paginate_by = 9  # Set pagination to 10 leads per page
+
+    def dispatch(self, request, *args, **kwargs):
+        query_params = request.GET.copy()
+
+        # Default `page` to 1 if missing
+        if "page" not in query_params:
+            query_params["page"] = 1
+
+        # Redirect only if `page` is missing or invalid
+        if query_params != request.GET:
+            return redirect(f"{reverse('leads:lead-list')}?{query_params.urlencode()}")
+
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
+        """
+        Retrieves the filtered queryset based on the category and unassigned_only parameters.
+        """
         user = self.request.user
-        category_name = self.request.GET.get(
-            "category", "new"
-        )  # Default to "new" category
-        unassigned_only = self.request.GET.get(
-            "unassigned_only"
-        )  # Check for unassigned-only filter
+        category_name = self.request.GET.get("category", "new").strip()
+        unassigned_only = self.request.GET.get("unassigned_only")
 
         if user.is_organisor:
             queryset = Lead.objects.all()
         else:
-            # For agents, filter leads assigned to them
             queryset = Lead.objects.filter(agent__user=user)
 
-        # Apply additional category filter if specified in the request
         if category_name:
             queryset = queryset.filter(category__name=category_name)
 
-        # Filter for unassigned leads if unassigned_only is selected
         if unassigned_only:
             queryset = queryset.filter(agent__isnull=True)
 
-        return queryset
+        return queryset.order_by("-date_created")
 
     def get_context_data(self, **kwargs):
+        """
+        Adds custom pagination logic to the context.
+        """
         context = super().get_context_data(**kwargs)
-        user = self.request.user
 
-        # Category filter form
+        # Get paginated queryset
+        leads = self.get_queryset()
+        paginator = Paginator(leads, self.paginate_by)
+        page = self.request.GET.get("page", 1)
+
+        try:
+            paginated_leads = paginator.page(page)
+        except PageNotAnInteger:
+            paginated_leads = paginator.page(1)
+        except EmptyPage:
+            paginated_leads = paginator.page(paginator.num_pages)
+
+        # Add paginated leads and filters to context
+        context["leads"] = paginated_leads
         context["form"] = CategoryFilterForm(self.request.GET)
-
-        # Include the unassigned-only filter checkbox state
         context["unassigned_only"] = self.request.GET.get("unassigned_only", False)
 
-        # If the user is an organiser, show unassigned leads
-        if user.is_organisor:
+        if self.request.user.is_organisor:
             unassigned_leads = Lead.objects.filter(
                 agent__isnull=True, category__name="new"
             )
-            context.update({"unassigned_leads": unassigned_leads})
+            context["unassigned_leads"] = unassigned_leads
 
         return context
 
     def post(self, request, *args, **kwargs):
+        """
+        Handles the POST request to assign the oldest unassigned lead to the current agent.
+        """
         user = self.request.user
         if not user.is_organisor:  # Only agents can take a lead
-            # Find the oldest unassigned lead in the "new" category
             oldest_unassigned_lead = (
                 Lead.objects.filter(agent__isnull=True, category__name="new")
                 .order_by("date_created")

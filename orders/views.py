@@ -25,7 +25,7 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
     model = Order
     template_name = "orders/order_list.html"
     context_object_name = "orders"
-    paginate_by = 15  # Set pagination to 25 orders per page
+    paginate_by = 15  # Set pagination to 15 orders per page
 
     def get_queryset(self):
         queryset = Order.objects.select_related("client").order_by("-date_created")

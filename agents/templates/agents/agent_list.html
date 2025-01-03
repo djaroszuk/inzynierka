@@ -15,30 +15,64 @@
                 </form>
             </div>
         </div>
+
+        {% if agents %}
         <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {% for agent in object_list %}
-          <div class="p-4 border rounded-lg shadow-md bg-white hover:shadow-lg transition-shadow">
-            <div class="flex items-center space-x-6">
-              <div class="w-16 h-16 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500">
-                <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-8 h-8" viewBox="0 0 24 24">
-                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-                </svg>
-              </div>
-              <div>
-                <h2 class="text-xl font-medium text-gray-900">{{ agent.user.username }}</h2>
-                <p class="text-gray-600 mt-1">Email: {{ agent.user.email }}</p>
-                <p class="text-gray-600">Date Joined: {{ agent.user.date_joined|date:"F j, Y" }}</p>
-                <a href="{% url 'agents:agent-detail' agent.pk %}" class="mt-4 inline-block text-indigo-500 font-medium hover:underline">
-                  View this agent
-                  <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-4 h-4 ml-1 inline" viewBox="0 0 24 24">
-                    <path d="M5 12h14M12 5l7 7-7 7"></path>
-                  </svg>
-                </a>
-              </div>
+            {% for agent in agents %}
+            <div class="p-4 border rounded-lg shadow-md bg-white hover:shadow-lg transition-shadow flex">
+                <!-- Aesthetic Rectangle -->
+                <div class="w-2 bg-gradient-to-b from-indigo-500 to-indigo-300 rounded-l-md"></div>
+                <div class="ml-4">
+                    <h2 class="text-xl font-medium text-gray-900">{{ agent.user.username }}</h2>
+                    <p class="text-gray-600 mt-1">Email: {{ agent.user.email }}</p>
+                    <p class="text-gray-600">Date Joined: {{ agent.user.date_joined|date:"F j, Y" }}</p>
+                    <a href="{% url 'agents:agent-detail' agent.pk %}" class="mt-4 inline-block text-indigo-500 font-medium hover:underline">
+                        View this agent
+                        <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-4 h-4 ml-1 inline" viewBox="0 0 24 24">
+                            <path d="M5 12h14M12 5l7 7-7 7"></path>
+                        </svg>
+                    </a>
+                </div>
             </div>
-          </div>
-          {% endfor %}
+            {% endfor %}
         </div>
+
+        <!-- Pagination -->
+        <div class="mt-4 flex justify-center">
+            <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
+                {% if agents.has_previous %}
+                <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page=1"
+                   class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                    First
+                </a>
+                <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page={{ agents.previous_page_number }}"
+                   class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                    Previous
+                </a>
+                {% endif %}
+
+                {% for page_num in agents.paginator.page_range %}
+                <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page={{ page_num }}"
+                   class="px-3 py-2 border border-gray-300 {% if page_num == agents.number %}bg-indigo-100 text-indigo-600{% else %}text-gray-700 bg-white hover:bg-gray-100{% endif %}">
+                    {{ page_num }}
+                </a>
+                {% endfor %}
+
+                {% if agents.has_next %}
+                <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page={{ agents.next_page_number }}"
+                   class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                    Next
+                </a>
+                <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page={{ agents.paginator.num_pages }}"
+                   class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                    Last
+                </a>
+                {% endif %}
+            </nav>
+        </div>
+        {% else %}
+        <p class="text-gray-500">No agents found.</p>
+        {% endif %}
     </div>
 </section>
-{% endblock content %}
+{% endblock %}

@@ -5,7 +5,7 @@
     <div class="container px-5 py-16 mx-auto">
         <!-- Header Section -->
         <div class="w-full mb-8 py-4 flex justify-between items-center border-b border-gray-300">
-            <h1 class="text-3xl font-semibold text-gray-900">Clients</h1>
+            <h1 class="text-2xl font-semibold text-gray-900">Clients</h1>
             <!-- Render the Search Form -->
             <form method="get" action="" class="flex items-center space-x-4">
                 {{ form.q }}
@@ -17,39 +17,91 @@
                     {{ form.last_contacted }}
                     <span>Last Contact (Days)</span>
                 </label>
-                <button type="submit" class="px-6 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 text-sm">
                     Search
                 </button>
             </form>
         </div>
 
         <!-- Client List -->
-        <div class="grid gap-6 md:grid-cols-2">
-            {% for client in object_list %}
-            <div class="p-4 border rounded-lg shadow-md bg-white hover:shadow-lg transition-shadow">
-                <div class="flex items-center space-x-6">
-                    <div class="w-16 h-16 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-500">
-                        <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-8 h-8" viewBox="0 0 24 24">
-                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-xl font-medium text-gray-900">{{ client.first_name }} {{ client.last_name }}</h2>
-                        <p class="text-gray-600 mt-1">Client Number: {{ client.client_number }}</p>
-                        <p class="text-gray-600">Status: {{ client.status }}</p>
+        <div class="grid gap-4 md:grid-cols-2">
+            {% for client in clients %}
+            <div class="p-5 border rounded-lg shadow-md
+                {% if client.status == "Important" %}
+                    bg-yellow-50
+                {% else %}
+                    bg-white
+                {% endif %}
+                hover:shadow-lg transition-shadow">
+                <!-- Left Bar -->
+                <div class="flex">
+                    <div class="w-1.5
+                        {% if client.status == "Important" %}
+                            bg-yellow-400
+                        {% else %}
+                            bg-gray-400
+                        {% endif %}
+                        rounded-l-md" style="height: calc(100% + 15px); margin-top: -7.5px;"></div>
+                    <div class="ml-5 w-full">
+                        <!-- Client Info -->
+                        <h2 class="text-xl font-bold text-gray-900">{{ client.first_name }} {{ client.last_name }}</h2>
+                        <p class="text-s text-gray-500 mt-1">Client Number: <span class="text-gray-800">{{ client.client_number }}</span></p>
+                        <p class="text-s text-gray-500 mt-1">Status:
+                            <span class="{% if client.status == 'Important' %}font-bold text-yellow-800{% else %}text-gray-800{% endif %}">
+                                {{ client.status }}
+                            </span>
+                        </p>
+                        <p class="text-ss text-gray-500 mt-1">Converted Date: <span class="text-gray-800">{{ client.converted_date|date:"F j, Y" }}</span></p>
                     </div>
                 </div>
-                <a href="{% url 'clients:client-detail' client.client_number %}" class="mt-4 inline-block text-indigo-500 font-medium hover:underline">
-                    View this client
-                    <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-4 h-4 ml-1 inline" viewBox="0 0 24 24">
-                        <path d="M5 12h14M12 5l7 7-7 7"></path>
-                    </svg>
-                </a>
+                <!-- Adjusted Button Placement -->
+                <div class="flex justify-end mt-3">
+                    <a href="{% url 'clients:client-detail' client.client_number %}" class="px-3 py-1.5 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 text-sm font-medium">
+                        View Client
+                        <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-3.5 h-3.5 ml-1 inline" viewBox="0 0 24 24">
+                            <path d="M5 12h14M12 5l7 7-7 7"></path>
+                        </svg>
+                    </a>
+                </div>
             </div>
             {% empty %}
             <!-- Display a message if no clients match the search -->
-            <p class="text-gray-600 text-lg">No clients found.</p>
+            <p class="text-gray-600 text-sm">No clients found.</p>
             {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex justify-center mt-8">
+            <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
+                {% if clients.has_previous %}
+                <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.important %}important={{ request.GET.important }}&{% endif %}{% if request.GET.last_contacted %}last_contacted={{ request.GET.last_contacted }}&{% endif %}page=1"
+                   class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                    First
+                </a>
+                <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.important %}important={{ request.GET.important }}&{% endif %}{% if request.GET.last_contacted %}last_contacted={{ request.GET.last_contacted }}&{% endif %}page={{ clients.previous_page_number }}"
+                   class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                    Previous
+                </a>
+                {% endif %}
+
+                {% for page_num in clients.paginator.page_range %}
+                <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.important %}important={{ request.GET.important }}&{% endif %}{% if request.GET.last_contacted %}last_contacted={{ request.GET.last_contacted }}&{% endif %}page={{ page_num }}"
+                   class="px-3 py-2 border border-gray-300 {% if page_num == clients.number %}bg-indigo-100 text-indigo-600{% else %}text-gray-700 bg-white hover:bg-gray-100{% endif %}">
+                    {{ page_num }}
+                </a>
+                {% endfor %}
+
+                {% if clients.has_next %}
+                <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.important %}important={{ request.GET.important }}&{% endif %}{% if request.GET.last_contacted %}last_contacted={{ request.GET.last_contacted }}&{% endif %}page={{ clients.next_page_number }}"
+                   class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                    Next
+                </a>
+                <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.important %}important={{ request.GET.important }}&{% endif %}{% if request.GET.last_contacted %}last_contacted={{ request.GET.last_contacted }}&{% endif %}page={{ clients.paginator.num_pages }}"
+                   class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                    Last
+                </a>
+                {% endif %}
+            </nav>
         </div>
     </div>
 </section>

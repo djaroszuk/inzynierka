@@ -31,7 +31,7 @@ class CustomUserCreationForm(UserCreationForm):
 class LeadCategoryUpdateForm(forms.ModelForm):
     class Meta:
         model = Lead
-        fields = ("category", "is_converted")
+        fields = ("category", "convert")
 
 
 try:

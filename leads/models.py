@@ -166,6 +166,7 @@ class Lead(models.Model):
     )
     is_converted = models.BooleanField(default=False)
     date_created = models.DateTimeField(auto_now_add=True)
+    convert = models.BooleanField(default=False)
     conversion_date = models.DateTimeField(null=True, blank=True)
     comment = models.TextField(blank=True, null=True)
 
@@ -180,6 +181,16 @@ class Lead(models.Model):
             raise ValueError("Lead is already assigned to an agent.")
         self.agent = agent
         self.save()
+
+    def save(self, *args, **kwargs):
+        # Check for a state change in `is_converted`
+        if self.pk:  # Instance exists
+            previous = Lead.objects.get(pk=self.pk)
+            self._is_converted_changed = not previous.is_converted and self.is_converted
+        else:
+            self._is_converted_changed = False  # New instance, no state change possible
+
+        super().save(*args, **kwargs)
 
 
 class Category(models.Model):
@@ -203,17 +214,24 @@ def post_user_created_signal(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Lead)
 def handle_lead_conversion(sender, instance, created, **kwargs):
     """
-    Handle actions after a Lead is saved.
-    - If a lead is converted, set the conversion_date.
-    - If a lead is converted and is of category 'sale', create/update a Client.
-    - Create a contact with category 'Other' with information when a client was created.
+    Handle actions after a Lead's `convert` field is set to True.
+    - Triggers only when `convert` is True.
     """
-    # If the lead is newly created and converted
-    if not created and instance.is_converted:
+
+    if instance.convert:  # Trigger only when `convert` is True
+        print(f"Signal 'handle_lead_conversion' triggered for Lead: {instance}")
+
+        # Mark the lead as converted
+        instance.is_converted = True
+        instance.convert = False  # Reset `convert` to prevent retriggering
+        instance.save(update_fields=["is_converted", "convert"])
+
+        # Set conversion date if not already set
         if not instance.conversion_date:
             instance.conversion_date = timezone.now()
             instance.save(update_fields=["conversion_date"])
 
+        # Handle the conversion logic for category and client creation
         if instance.category and instance.category.name.lower() == "sale":
             # Check if a client with the same email already exists
             client, created_client = Client.objects.get_or_create(
@@ -235,9 +253,11 @@ def handle_lead_conversion(sender, instance, created, **kwargs):
                 Contact.objects.create(
                     client=client,
                     reason=Contact.ReasonChoices.OTHER,
-                    description=f"Client created on {now().strftime('%Y-%m-%d %H:%M:%S')}.",
+                    description=(
+                        f"Client created on {now().strftime('%Y-%m-%d %H:%M:%S')}. "
+                        f"Lead comment: {instance.comment or 'No comment provided.'}"
+                    ),
                 )
-
             else:
                 print(f"Client with email {instance.email} already exists.")
 

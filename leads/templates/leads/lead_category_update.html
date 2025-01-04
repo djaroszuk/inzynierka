@@ -14,9 +14,30 @@
                     <a href="{% url 'leads:lead-category-update' lead.pk %}" class="text-indigo-500 border-b-2 border-indigo-500 py-2 px-4 text-lg">Category</a>
                     <a href="{% url 'leads:lead-update' lead.pk %}" class="py-2 px-4 text-lg text-gray-600 hover:text-indigo-500">Details</a>
                 </div>
+
+                <!-- Display is_converted status -->
+                <p class="text-lg text-gray-700 text-center mb-4">
+                    Conversion Status:
+                    <span class="{% if lead.is_converted %}text-green-500{% else %}text-red-500{% endif %}">
+                        {% if lead.is_converted %}
+                            Converted
+                        {% else %}
+                            Not Converted
+                        {% endif %}
+                    </span>
+                </p>
+
                 <form method="post" class="mb-6">
                     {% csrf_token %}
-                    {{ form|crispy }}
+
+                    <!-- Render form fields -->
+                    {{ form.category|as_crispy_field }}
+
+                    <!-- Show convert checkbox only if not converted -->
+                    {% if not lead.is_converted %}
+                        {{ form.convert|as_crispy_field }}
+                    {% endif %}
+
                     <div class="w-full">
                         <button type="submit" class="mt-4 bg-indigo-500 text-white px-6 py-3 rounded-lg text-lg hover:bg-indigo-600 mx-auto block">
                             Change Category

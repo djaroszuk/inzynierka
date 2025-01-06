@@ -4,10 +4,13 @@ from django.views import generic
 from django.contrib.messages.views import SuccessMessageMixin
 from .models import Product
 from orders.models import OrderProduct
-from .forms import ProductForm, AddProductForm
+from .forms import ProductForm, AddProductForm, TimeFrameSelectionForm
 from clients.models import Client
 from orders.forms import StatisticsFilterForm
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
+from datetime import timedelta, datetime
+from django.db.models import Sum, Count
+from django.http import JsonResponse
 
 
 class ProductListView(generic.ListView):
@@ -205,3 +208,55 @@ class ProductSalesDetailView(generic.ListView):
         print(f"Chart revenue data: {revenue_data}")
 
         return context
+
+
+class ProductSalesChartView(generic.TemplateView):
+    template_name = "products/sales_chart.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        form = TimeFrameSelectionForm(self.request.GET or None)
+        context["form"] = form
+        return context
+
+
+def product_sales_data(request):
+    # Get the selected time frame from the request
+    time_frame = request.GET.get("time_frame", "last_30_days")
+    end_date = datetime.now()
+
+    # Calculate the start and end dates based on the selected time frame
+    if time_frame == "last_30_days":
+        start_date = end_date - timedelta(days=30)
+    else:
+        year, month = map(int, time_frame.split("-"))
+        start_date = datetime(year, month, 1)
+        next_month = month % 12 + 1
+        year = year + (1 if next_month == 1 else 0)
+        end_date = datetime(year, next_month, 1)
+
+    # Fetch sales data for the selected time frame
+    sales_data = (
+        OrderProduct.objects.filter(
+            order__status="Accepted", order__date_created__range=(start_date, end_date)
+        )
+        .values("product_name")
+        .annotate(
+            total_sold=Sum("quantity"),
+            unique_customers=Count("order__client", distinct=True),
+        )
+        .order_by("-total_sold")[:5]
+    )
+
+    # Prepare data for the chart
+    labels = [entry["product_name"] for entry in sales_data]
+    total_sold = [entry["total_sold"] for entry in sales_data]
+    unique_customers = [entry["unique_customers"] for entry in sales_data]
+
+    return JsonResponse(
+        {
+            "labels": labels,
+            "total_sold": total_sold,
+            "unique_customers": unique_customers,
+        }
+    )

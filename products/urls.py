@@ -8,6 +8,8 @@ from .views import (
     ProductDeleteView,
     ProductListView,
     ProductSalesDetailView,
+    ProductSalesChartView,
+    product_sales_data,
 )
 
 app_name = "products"
@@ -33,4 +35,6 @@ urlpatterns = [
         ProductSalesDetailView.as_view(),
         name="all-products-statistics",
     ),
+    path("sales-chart/", ProductSalesChartView.as_view(), name="sales_chart"),
+    path("sales-data/", product_sales_data, name="sales_data"),
 ]

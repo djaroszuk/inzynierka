@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<section class="text-gray-600 body-font">
+  <div class="container px-5 py-24 mx-auto">
+    <div class="flex flex-col text-center w-full mb-8">
+      <h1 class="sm:text-4xl text-3xl font-medium title-font mb-2 text-gray-900">Product Sales Chart</h1>
+      <p class="lg:w-2/3 mx-auto leading-relaxed text-base">Select a time frame to view product sales data</p>
+    </div>
+    <form method="get" class="mb-8">
+      {{ form.as_p }}
+      <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Filter</button>
+    </form>
+    <div class="lg:w-2/3 w-full mx-auto">
+      <canvas id="salesChart" width="400" height="200"></canvas>
+    </div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/sales_chart.js' %}"></script>
+{% endblock %}

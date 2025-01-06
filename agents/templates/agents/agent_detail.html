@@ -18,10 +18,22 @@
                         <span class="text-gray-500 text-lg">Username</span>
                         <span class="text-gray-900 text-lg">{{ agent.user.username }}</span>
                     </div>
+                    <hr class="w-full border-gray-300">
+                    <div class="flex justify-between w-full py-2">
+                        <span class="text-gray-500 text-lg">First name</span>
+                        <span class="text-gray-900 text-lg">{{ agent.user.first_name }}</span>
+                    </div>
+                    <hr class="w-full border-gray-300">
+                    <div class="flex justify-between w-full py-2">
+                        <span class="text-gray-500 text-lg">Last name</span>
+                        <span class="text-gray-900 text-lg">{{ agent.user.last_name }}</span>
+                    </div>
+                    <hr class="w-full border-gray-300">
                     <div class="flex justify-between w-full py-2 border-t">
                         <span class="text-gray-500 text-lg">Date Joined</span>
                         <span class="text-gray-900 text-lg">{{ agent.user.date_joined|date:"M d, Y" }}</span>
                     </div>
+                    <hr class="w-full border-gray-300">
                     <div class="flex justify-between w-full py-2 border-t">
                         <span class="text-gray-500 text-lg">Email</span>
                         <span class="text-gray-900 text-lg">{{ agent.user.email|default:"No data" }}</span>

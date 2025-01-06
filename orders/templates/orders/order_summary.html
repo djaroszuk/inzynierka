@@ -1,31 +1,55 @@
 {% extends "base.html" %}
+{% load tailwind_filters %}
 
 {% block content %}
-<h1>Order Summary</h1>
+<section class="text-gray-600 body-font">
+    <div class="container mx-auto px-6 py-12">
+        <div class="bg-white shadow-lg rounded-lg p-8 lg:w-3/4 mx-auto">
+            <div class="mb-6">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-widest">Order Summary</h2>
+                <h1 class="text-gray-900 text-2xl font-bold mt-2">Order Details</h1>
+            </div>
 
-<!-- Display basic order details -->
-<p><strong>Client:</strong> {{ order.client }}</p>
-<p><strong>Date Created:</strong> {{ order.date_created }}</p>
-<p><strong>Status:</strong> {{ order.get_status_display }}</p>
+            <!-- Display basic order details -->
+            <div class="mb-6">
+                <p class="text-sm text-gray-600 mb-2"><strong>Client:</strong> {{ order.client }}</p>
+                <p class="text-sm text-gray-600 mb-2"><strong>Client number:</strong> {{ order.client.client_number }}</p>
+                <p class="text-sm text-gray-600 mb-2"><strong>Date Created:</strong> {{ order.date_created }}</p>
+                <p class="text-sm text-gray-600 mb-2"><strong>Status:</strong> {{ order.get_status_display }}</p>
+            </div>
 
-<!-- List the products in the order -->
-<h3>Products:</h3>
-<ul>
-    {% for order_product in order.order_products.all %}
-    <li>
-        <strong>{{ order_product.product_name }}</strong>:
-        {{ order_product.quantity }} × ${{ order_product.product_price }}
-        = ${{ order_product.total_price }}
-    </li>
-    {% endfor %}
-</ul>
+            <!-- List the products in the order -->
+            <h3 class="text-lg font-semibold text-gray-800">Products</h3>
+            <ul class="list-disc pl-5 mt-4 space-y-2">
+                {% for order_product in order.order_products.all %}
+                <li class="text-sm text-gray-700">
+                    <span class="font-medium text-gray-800">{{ order_product.product_name }}</span>:
+                    {{ order_product.quantity }} &times; ${{ order_product.product_price }} =
+                    <span class="font-semibold text-gray-900">${{ order_product.total_price }}</span>
+                </li>
+                {% endfor %}
+            </ul>
 
-<p><strong>Total Price:</strong> ${{ order.total_price }}</p>
+            <p class="text-lg font-semibold text-gray-800 mt-6">Total Price:
+                <span class="text-indigo-500">${{ order.total_price }}</span>
+            </p>
 
-<!-- Action Buttons -->
-<form method="POST">
-    {% csrf_token %}
-    <button type="submit" name="action" value="send_offer">Send Offer</button>
-    <button type="submit" name="action" value="cancel">Cancel Order</button>
-</form>
+            <!-- Action Buttons -->
+            <div class="flex justify-center space-x-4 mt-8">
+                <form method="POST" class="inline-block">
+                    {% csrf_token %}
+                    <button type="submit" name="action" value="send_offer" class="bg-indigo-500 text-white px-4 py-2 rounded-md hover:bg-indigo-600">
+                        Send Offer
+                    </button>
+                </form>
+                <form method="POST" class="inline-block">
+                    {% csrf_token %}
+                    <button type="submit" name="action" value="cancel" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">
+                        Cancel Order
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
 {% endblock %}

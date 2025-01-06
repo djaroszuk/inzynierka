@@ -138,6 +138,13 @@ class ContactCreateView(LoginRequiredMixin, generic.CreateView):
     template_name = "clients/contact_form.html"
     form_class = ContactForm
 
+    def get_context_data(self, **kwargs):
+        """Add the client to the context using client_number."""
+        context = super().get_context_data(**kwargs)
+        client_number = self.kwargs.get("client_number")
+        context["client"] = get_object_or_404(Client, client_number=client_number)
+        return context
+
     def form_valid(self, form):
         """Assign the client and the logged-in user before saving."""
         client_number = self.kwargs.get("client_number")

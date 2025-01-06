@@ -1,10 +1,28 @@
 {% extends "base.html" %}
+{% load tailwind_filters %}
 
 {% block content %}
-<h2>Add a New Contact for {{ client.first_name }} {{ client.last_name }}</h2>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Save Contact</button>
-</form>
+
+<section class="text-gray-600 body-font overflow-hidden">
+    <div class="container px-5 py-24 mx-auto">
+        <div class="lg:w-3/5 mx-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-medium text-gray-900">
+                    Add a New Contact for {{ client.first_name }} {{ client.last_name }}
+                </h2>
+                <a href="{% url 'clients:contact-list' client.client_number %}" class="text-indigo-500 hover:underline">
+                    Back to Contact List
+                </a>
+            </div>
+            <form method="post" class="bg-white p-6 rounded-lg shadow-md">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <button type="submit" class="bg-indigo-500 text-white py-3 px-6 rounded-lg text-lg hover:bg-indigo-600 w-full">
+                    Save Contact
+                </button>
+            </form>
+        </div>
+    </div>
+</section>
+
 {% endblock %}

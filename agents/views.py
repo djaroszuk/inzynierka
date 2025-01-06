@@ -1,5 +1,6 @@
 from django.core.mail import send_mail
 from django.views import generic
+from django.contrib import messages
 import random
 from django.shortcuts import reverse
 from leads.models import Agent
@@ -304,6 +305,10 @@ class SendEmailView(LoginRequiredMixin, generic.FormView):
                         self.request.user.email,  # From email
                         recipient_list,  # To emails
                     )
+                    messages.success(
+                        self.request,
+                        f"Email sent successfully to {len(recipient_list)} clients.",
+                    )
                     print("[INFO] Emails sent to all clients successfully.")
 
                     # Create contact entries for all clients
@@ -318,6 +323,10 @@ class SendEmailView(LoginRequiredMixin, generic.FormView):
                 else:
                     print("[WARNING] Recipient list is empty. No emails sent.")
                     form.add_error(None, "No valid client emails available.")
+                    messages.error(
+                        self.request,
+                        "You do not have permission to send emails to all clients.",
+                    )
                     return self.form_invalid(form)
             else:
                 print("[WARNING] Non-organizer user tried to send to all clients.")
@@ -343,6 +352,9 @@ class SendEmailView(LoginRequiredMixin, generic.FormView):
                 [client.email],  # To email
             )
             print(f"[INFO] Email sent to {client.email} successfully.")
+            messages.success(
+                self.request, f"Email sent successfully to {client.email}."
+            )
 
             # Create a contact entry for the specific client
             Contact.objects.create(

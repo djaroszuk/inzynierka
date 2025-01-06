@@ -1,38 +1,86 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>Order Details</h1>
+<div class="container mx-auto p-6">
+    {% if messages %}
+        <div class="messages space-y-4">
+            {% for message in messages %}
+                <div class="alert {{ message.tags }} p-4 rounded shadow bg-indigo-100 text-indigo-800">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 
-<h2>Order ID: {{ order.id }}</h2>
-<p>
-    <strong>Client number:</strong>
-    <a href="{% url 'clients:client-detail' order.client.client_number %}">{{ order.client.client_number }}</a>
-</p>
-<p><strong>Date Created:</strong> {{ order.date_created }}</p>
-<p><strong>Status:</strong> {{ order.status }}</p>
-<p><strong>Total Price:</strong> {{ order.total_price|floatformat:2 }}</p>
+    <a href="{% url 'orders:order-list' %}" class="inline-block mb-4 text-indigo-500 hover:underline">&larr; Back to Orders</a>
 
-<h3>Products in this Order:</h3>
-<table>
-    <thead>
-        <tr>
-            <th>Product Name</th>
-            <th>Quantity</th>
-            <th>Price (Each)</th>
-            <th>Total Price</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for item in order.order_products.all %}
-        <tr>
-            <td>{{ item.product_name }}</td>
-            <td>{{ item.quantity }}</td>
-            <td>{{ item.product_price|floatformat:2 }}</td>
-            <td>{{ item.total_price|floatformat:2 }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+    <div class="order-details bg-gray-100 p-6 rounded-lg shadow-lg">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Order Details</h1>
 
-<a href="{% url 'orders:order-list' %}">Back to Orders</a>
+        <h2 class="text-lg text-gray-600 font-semibold">Order ID: {{ order.id }}</h2>
+        <p class="mt-2 text-gray-700">
+            <strong>Client number:</strong>
+            <a href="{% url 'clients:client-detail' order.client.client_number %}" class="text-indigo-500 hover:underline">{{ order.client.client_number }}</a>
+        </p>
+        <p class="mt-2 text-gray-700"><strong>Date Created:</strong> {{ order.date_created }}</p>
+        <p class="mt-2 text-gray-700"><strong>Status:</strong> <span class="text-indigo-500">{{ order.status }}</span></p>
+        <p class="mt-2 text-gray-700"><strong>Total Price:</strong> ${{ order.total_price|floatformat:2 }}</p>
+
+        <h3 class="text-lg font-semibold text-gray-800 mt-6">Products in this Order:</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-300 mt-4 rounded-lg shadow">
+                <thead class="bg-indigo-500 text-white">
+                    <tr>
+                        <th class="py-3 px-8 text-left text-sm font-medium uppercase">Product Name</th>
+                        <th class="py-3 px-8 text-left text-sm font-medium uppercase">Quantity</th>
+                        <th class="py-3 px-8 text-left text-sm font-medium uppercase">Price (Each)</th>
+                        <th class="py-3 px-8 text-left text-sm font-medium uppercase">Total Price</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-300">
+                    {% for item in order.order_products.all %}
+                    <tr class="bg-white hover:bg-gray-100">
+                        <td class="py-4 px-8 text-gray-700">{{ item.product_name }}</td>
+                        <td class="py-4 px-8 text-gray-700">{{ item.quantity }}</td>
+                        <td class="py-4 px-8 text-gray-700">${{ item.product_price|floatformat:2 }}</td>
+                        <td class="py-4 px-8 text-gray-700">${{ item.total_price|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h3 class="text-lg font-semibold text-gray-800 mt-6">Status History</h3>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white border border-gray-300 mt-4 rounded-lg shadow">
+                <thead class="bg-indigo-500 text-white">
+                    <tr>
+                        <th class="py-4 px-10 text-left text-sm font-medium uppercase">Previous Status</th>
+                        <th class="py-4 px-10 text-left text-sm font-medium uppercase">New Status</th>
+                        <th class="py-4 px-10 text-left text-sm font-medium uppercase">Changed At</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-300">
+                    {% for change in status_history %}
+                    <tr class="bg-white hover:bg-gray-100">
+                        <td class="py-5 px-10 text-gray-700">{{ change.previous_status }}</td>
+                        <td class="py-5 px-10 text-gray-700">{{ change.new_status }}</td>
+                        <td class="py-5 px-10 text-gray-700">{{ change.changed_at|date:"d M Y H:i:s" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if request.user.is_organisor %}
+        <form method="post" class="mt-6">
+            {% csrf_token %}
+            <button type="submit" name="mark_as_paid" class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600">
+                Mark as Paid
+            </button>
+        </form>
+        {% endif %}
+
+    </div>
+</div>
 {% endblock %}

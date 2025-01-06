@@ -1,38 +1,35 @@
 {% extends "base.html" %}
+{% load tailwind_filters %}
+
+
 {% block content %}
-<h2>Send Email</h2>
 
-<form method="POST">
-  <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+<section class="text-gray-600 body-font overflow-hidden">
+  <div class="container px-5 py-24 mx-auto">
+      <div class="lg:w-3/5 mx-auto">
+          <h2 class="text-2xl font-medium text-gray-900 text-center mb-6">Send Email</h2>
 
-  <!-- Subject -->
-  <p>
-    <label for="id_subject">Email Subject:</label>
-    <input type="text" name="subject" maxlength="100" required id="id_subject">
-  </p>
+          <!-- Messages -->
+          {% if messages %}
+          <div class="mb-4">
+              {% for message in messages %}
+              <div class="p-4 mb-4 rounded-lg {% if message.tags == 'success' %}bg-green-100 text-green-800{% elif message.tags == 'error' %}bg-red-100 text-red-800{% elif message.tags == 'warning' %}bg-yellow-100 text-yellow-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                  {{ message }}
+              </div>
+              {% endfor %}
+          </div>
+          {% endif %}
 
-  <!-- Message -->
-  <p>
-    <label for="id_message">Email Message:</label>
-    <textarea name="message" cols="40" rows="10" required id="id_message"></textarea>
-  </p>
+          <!-- Form -->
+          <form method="POST" class="bg-white p-6 rounded-lg shadow-md">
+              {% csrf_token %}
+              {{ form|crispy }}
+              <button type="submit" class="bg-indigo-500 text-white py-3 px-6 rounded-lg text-lg hover:bg-indigo-600 w-full">
+                  Send Email
+              </button>
+          </form>
+      </div>
+  </div>
+</section>
 
-  <!-- Client Number -->
-  <p>
-    <label for="id_client_number">Client Number:</label>
-    <input type="text" name="client_number" id="id_client_number" value="{{ prefilled_client_number|default:'' }}">
-    <span class="helptext">Provide the unique client number to email a specific client.</span>
-  </p>
-
-  <!-- Send to All (Visible to Organizers Only) -->
-  {% if is_organisor %}
-    <p>
-      <label for="id_send_to_all">Send to All:</label>
-      <input type="checkbox" name="send_to_all" id="id_send_to_all" value="true">
-      <span class="helptext">Check this box to send the email to all clients.</span>
-    </p>
-  {% endif %}
-
-  <button type="submit">Send Email</button>
-</form>
 {% endblock %}

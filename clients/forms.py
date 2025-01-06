@@ -6,7 +6,14 @@ from .models import Client, Contact
 class ClientForm(forms.ModelForm):
     class Meta:
         model = Client
-        fields = ["first_name", "last_name", "age"]
+        fields = ["first_name", "last_name", "age", "email", "phone_number"]
+        labels = {
+            "first_name": "First Name",
+            "last_name": "Last Name",
+            "age": "Age",
+            "email": "Email",
+            "phone_number": "Phone Number",
+        }
 
 
 class ContactForm(forms.ModelForm):

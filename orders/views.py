@@ -17,6 +17,7 @@ from django.utils.timezone import now, timedelta
 from django.db.models.functions import TruncDay
 from django.db.models import Count, Sum, F
 import json
+from django.utils.dateparse import parse_datetime
 from decimal import Decimal
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
@@ -63,24 +64,43 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
 
     def post(self, request, *args, **kwargs):
         if request.user.is_organisor and "delete_pending_orders" in request.POST:
-            cutoff_time = now() - timedelta(minutes=1)
+            cutoff_time = now() - timedelta(
+                minutes=1
+            )  # Adjust the time frame as needed
             pending_orders = Order.objects.filter(
                 status="Pending", date_created__lt=cutoff_time
             )
 
-            # Restore product quantities before deleting orders
+            count = 0
             for order in pending_orders:
+                # Restore product quantities
                 for order_product in order.order_products.all():
                     product = order_product.product
                     if product:
                         product.stock_quantity += order_product.quantity
                         product.save()
 
-            count = pending_orders.count()  # Count the orders to delete
-            pending_orders.delete()  # Delete the orders after restoring stock
-            print(f"{count} pending orders older than 48 hours were deleted.")
+                # Create a contact record on the client's profile
+                Contact.objects.create(
+                    client=order.client,
+                    reason=Contact.ReasonChoices.SALES_OFFER,  # Use appropriate reason choice
+                    description=(f"Order #{order.id} was canceled due to inactivity. "),
+                    contact_date=now(),
+                    user=self.request.user.userprofile,  # Assuming userprofile is available
+                )
 
-        return self.get(request, *args, **kwargs)
+                # Update the order status to "Canceled"
+                order.status = "Canceled"
+                order.save()
+                count += 1
+
+            messages.success(
+                request,
+                f"{count} pending orders older than 48 hours were marked as canceled, stock was restored, "
+                f"and clients were notified.",
+            )
+
+        return redirect("orders:order-list")  # Redirect to the order list
 
 
 class ClientOrdersView(generic.ListView):
@@ -136,8 +156,60 @@ class OrderDetailView(LoginRequiredMixin, generic.DetailView):
 
     def get_object(self):
         """Retrieve the order based on its primary key."""
-        # Fetch the specific order without additional filtering
         return get_object_or_404(Order, pk=self.kwargs["pk"])
+
+    def get_context_data(self, **kwargs):
+        """Add parsed status history to the context."""
+        context = super().get_context_data(**kwargs)
+        order = self.get_object()
+
+        # Parse `changed_at` into datetime objects
+        parsed_status_history = []
+        for change in order.status_history:
+            change["changed_at"] = parse_datetime(change["changed_at"])
+            parsed_status_history.append(change)
+
+        # Add parsed status history to the context
+        context["status_history"] = parsed_status_history
+        return context
+
+    def post(self, request, *args, **kwargs):
+        """Handle the 'Mark as Paid' button."""
+        order = self.get_object()
+
+        if "mark_as_paid" in request.POST:
+            if order.status != "Paid":  # Only update if not already paid
+                order.status = "Paid"
+                order.save()
+
+                # Send email confirmation
+                subject = f"Payment Confirmation for Order #{order.id}"
+                message = (
+                    f"Dear Client,\n\n"
+                    f"We have received your payment for Order #{order.id}. "
+                    f"Your total price is: ${order.total_price:.2f}\n"
+                    f"Your order will be processed and shipped soon.\n\n"
+                    f"Thank you for shopping with us!\n\n"
+                    f"Best regards,\n"
+                    f"Your Company Name"
+                )
+                recipient = order.client.email  # Assuming the client has an email field
+                send_mail(
+                    subject,
+                    message,
+                    "your-email@example.com",  # From email
+                    [recipient],
+                    fail_silently=False,
+                )
+
+                messages.success(request, f"Order #{order.id} has been marked as Paid.")
+            else:
+                messages.warning(
+                    request, f"Order #{order.id} is already marked as Paid."
+                )
+
+        # Redirect back to the same detail page
+        return redirect("orders:order-detail", pk=order.pk)
 
 
 class OrderCreateView(LoginRequiredMixin, generic.CreateView):
@@ -370,7 +442,7 @@ class OrderConfirmView(generic.View):
         else:
             messages.error(request, "Invalid action.")
 
-        return redirect("orders:order-list")
+        return redirect("/")
 
     def send_payment_email(self, order):
         """Wyślij e-mail z informacjami o płatności."""

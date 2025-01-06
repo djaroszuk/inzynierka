@@ -1,15 +1,48 @@
 {% extends "base.html" %}
 
 {% block content %}
-    <h1>Order Confirmation</h1>
+<section class="text-gray-600 body-font">
+    <div class="container mx-auto px-6 py-12">
+        <div class="bg-white shadow-lg rounded-lg p-8 lg:w-3/4 mx-auto">
+            <div class="mb-6">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-widest">Order Confirmation</h2>
+                <h1 class="text-gray-900 text-2xl font-bold mt-2">Order #{{ order.id }}</h1>
+            </div>
 
-    <p>You have received an offer for Order #{{ order.id }}.</p>
+            <p class="text-sm text-gray-600 mb-4">You have received an offer for Order #{{ order.id }}.</p>
 
-    <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="token" value="{{ order.offer_token }}">
+            <!-- Display order details -->
+            <div class="mb-6">
+                <p class="text-sm text-gray-600 mb-2"><strong>Total Price:</strong> ${{ order.total_price }}</p>
+            </div>
 
-        <button type="submit" name="action" value="accept">Accept Offer</button>
-        <button type="submit" name="action" value="deny">Deny Offer</button>
-    </form>
+            <!-- List the products in the order -->
+            <h3 class="text-lg font-semibold text-gray-800">Products</h3>
+            <ul class="list-disc pl-5 mt-4 space-y-2">
+                {% for order_product in order.order_products.all %}
+                <li class="text-sm text-gray-700">
+                    <span class="font-medium text-gray-800">{{ order_product.product_name }}</span>:
+                    {{ order_product.quantity }} &times; ${{ order_product.product_price }} =
+                    <span class="font-semibold text-gray-900">${{ order_product.total_price }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <!-- Action Buttons -->
+            <form method="post" class="mt-8 space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="token" value="{{ order.offer_token }}">
+
+                <div class="flex justify-center space-x-4">
+                    <button type="submit" name="action" value="accept" class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600">
+                        Accept Offer
+                    </button>
+                    <button type="submit" name="action" value="deny" class="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600">
+                        Deny Offer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
 {% endblock %}

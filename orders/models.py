@@ -8,6 +8,7 @@ from django.utils import timezone
 from decimal import Decimal
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils.timezone import now
 
 
 class OrderManager(models.Manager):
@@ -80,6 +81,7 @@ class Order(models.Model):
             ("Pending", "Pending"),
             ("Accepted", "Accepted"),
             ("Canceled", "Canceled"),
+            ("Paid", "Paid"),
         ],
         default="Pending",
     )
@@ -94,6 +96,7 @@ class Order(models.Model):
         "10": Decimal("0.10"),
         "15": Decimal("0.15"),
     }
+    status_history = models.JSONField(default=list, blank=True)
 
     @property
     def total_price(self):
@@ -112,6 +115,22 @@ class Order(models.Model):
         return [
             (key, f"{value * 100:.0f}%") for key, value in self.DISCOUNT_CHOICES.items()
         ]
+
+    def save(self, *args, **kwargs):
+        """
+        Override save to log status changes in status_history.
+        """
+        if self.pk:  # Check if the instance already exists
+            old_status = Order.objects.get(pk=self.pk).status
+            if old_status != self.status:  # If the status has changed
+                self.status_history.append(
+                    {
+                        "previous_status": old_status,
+                        "new_status": self.status,
+                        "changed_at": now().isoformat(),
+                    }
+                )
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Order {self.id} for {self.client}"

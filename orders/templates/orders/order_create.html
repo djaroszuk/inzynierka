@@ -1,49 +1,81 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load tailwind_filters %}
 
 {% block content %}
-<h1>Create New Order</h1>
-
-<form method="POST">
-    {% csrf_token %}
-
-    <!-- Render the form fields for the client -->
-    {{ form.as_p }}
-
-    <!-- Product Selection -->
-    <h3>Select Products</h3>
-    <div>
-        {% for product in products %}
-        <div style="margin-bottom: 10px;">
-            {% if product.stock_quantity > 0 %}
-            <!-- Product Available -->
-            <input type="checkbox" id="product_{{ product.id }}" name="product" value="{{ product.id }}">
-            <label for="product_{{ product.id }}">{{ product.name }} - ${{ product.price }} ({{ product.stock_quantity }} in stock)</label>
-            <br>
-            <label for="quantity_{{ product.id }}">Quantity:</label>
-            <input type="number" id="quantity_{{ product.id }}" name="quantity_{{ product.id }}" value="1" min="1" max="{{ product.stock_quantity }}">
-            {% else %}
-            <!-- Product Out of Stock -->
-            <input type="checkbox" id="product_{{ product.id }}" name="product" value="{{ product.id }}" disabled>
-            <label for="product_{{ product.id }}" style="color: gray;">
-                {{ product.name }} - ${{ product.price }} (Out of Stock)
-            </label>
-            {% endif %}
+{% if messages %}
+<div class="messages space-y-4">
+    {% for message in messages %}
+        <div class="alert {{ message.tags }} p-4 rounded shadow bg-indigo-100 text-indigo-800">
+            {{ message }}
         </div>
-        {% endfor %}
-    </div>
+    {% endfor %}
+</div>
+{% endif %}
+<section class="text-gray-600 body-font">
+    <div class="container mx-auto px-6 py-12">
+        <div class="bg-white shadow-lg rounded-lg p-8 lg:w-3/4 mx-auto">
+            <div class="mb-6">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-widest">Create Order</h2>
+            </div>
 
-    <!-- Discount Selection -->
-    <h3>Select Discount (Optional)</h3>
-    <div>
-        <label for="discount">Discount:</label>
-        <select name="discount" id="discount">
-            {% for key, value in discount_choices %}
-            <option value="{{ key }}">{{ value }}</option>
-            {% endfor %}
-        </select>
-    </div>
+            <form method="POST" class="space-y-6">
+                {% csrf_token %}
 
-    <!-- Submit Button -->
-    <button type="submit" style="margin-top: 20px;">Create Order</button>
-</form>
+                <!-- Render the form fields for the client -->
+                {{ form|crispy }}
+
+                <!-- Product Selection -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800">Select Products</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                        {% for product in products %}
+                        <div class="p-4 border rounded-lg shadow-sm relative group">
+                            {% if product.stock_quantity > 0 %}
+                            <!-- Product Available -->
+                            <label class="block">
+                                <input type="checkbox" id="product_{{ product.id }}" name="product" value="{{ product.id }}" class="form-checkbox h-5 w-5 text-indigo-500 mb-2">
+                                <span class="block text-lg font-medium text-gray-800">{{ product.name }}</span>
+                            </label>
+                            <p class="text-sm text-gray-600 mb-2">Price: ${{ product.price }}</p>
+                            <p class="text-sm text-gray-600 mb-2">Stock: {{ product.stock_quantity }} available</p>
+                            <label for="quantity_{{ product.id }}" class="block mt-2 text-sm font-semibold text-gray-800">Quantity:</label>
+                            <input type="number" id="quantity_{{ product.id }}" name="quantity_{{ product.id }}" value="1" min="1" max="{{ product.stock_quantity }}" class="form-input mt-1 block w-full rounded-md border-2 border-gray-300 focus:border-indigo-600 focus:ring focus:ring-indigo-200">
+                            <div class="absolute hidden group-hover:block bg-gray-200 text-gray-700 text-sm p-2 rounded shadow-lg mt-2">
+                                Information about the product: {{ product.description }}
+                            </div>
+                            {% else %}
+                            <!-- Product Out of Stock -->
+                            <label class="text-gray-400">
+                                <input type="checkbox" id="product_{{ product.id }}" name="product" value="{{ product.id }}" disabled class="form-checkbox h-5 w-5 text-gray-400 mb-2">
+                                <span class="block text-lg font-medium">{{ product.name }}</span>
+                            </label>
+                            <p class="text-sm text-gray-400">Price: ${{ product.price }}</p>
+                            <p class="text-sm text-gray-400">Out of Stock</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Discount Selection -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800">Select Discount (Optional)</h3>
+                    <label for="discount" class="block mt-2 text-sm font-semibold text-gray-800">Discount:</label>
+                    <select name="discount" id="discount" class="form-select mt-1 block w-full rounded-md border-2 border-gray-300 focus:border-indigo-600 focus:ring focus:ring-indigo-200">
+                        {% for key, value in discount_choices %}
+                        <option value="{{ key }}">{{ value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex justify-center">
+                    <button type="submit" class="w-1/2 bg-indigo-500 text-white hover:bg-indigo-600 px-4 py-2 rounded-md">
+                        Create Order
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
 {% endblock %}

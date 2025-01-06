@@ -7,11 +7,11 @@
         <div class="lg:w-3/5 mx-auto flex flex-col items-center">
             <div class="w-full lg:py-8 mb-6">
                 <h2 class="text-base title-font text-gray-500 tracking-widest text-center">AGENT</h2>
-                <h1 class="text-gray-900 text-4xl title-font font-medium mb-6 text-center">{{ agent.user.username }}</h1>
+                <h1 class="text-gray-900 text-4xl title-font font-bold mb-6 text-center">{{ agent.user.username }}</h1>
                 <div class="flex justify-center mb-8">
-                    <a href="{% url 'agents:agent-detail' agent.pk %}" class="text-indigo-500 border-b-2 border-indigo-500 py-2 px-4 text-lg">Description</a>
-                    <a href="{% url 'agents:agent-stats' agent.pk %}" class="py-2 px-4 text-lg text-gray-600 hover:text-indigo-500">Stats</a>
-                    <a href="{% url 'agents:agent-update' agent.pk %}" class="py-2 px-4 text-lg text-gray-600 hover:text-indigo-500">Details</a>
+                    <a href="{% url 'agents:agent-detail' agent.pk %}" class="text-indigo-500 border-b-2 border-indigo-500 py-2 px-4 text-lg font-medium">Details</a>
+                    <a href="{% url 'agents:agent-stats' agent.pk %}" class="py-2 px-4 text-lg font-medium text-gray-600 hover:text-indigo-500">Stats</a>
+                    <a href="{% url 'agents:agent-update' agent.pk %}" class="py-2 px-4 text-lg font-medium text-gray-600 hover:text-indigo-500">Update</a>
                 </div>
                 <div class="flex flex-col items-center border-t border-gray-200 py-4 w-full">
                     <div class="flex justify-between w-full py-2">

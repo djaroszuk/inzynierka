@@ -3,50 +3,64 @@
 
 {% block content %}
 <section class="text-gray-600 body-font overflow-hidden">
-    <div class="container px-5 py-24 mx-auto">
+    <div class="container px-5 py-20 mx-auto">
         <div class="lg:w-4/5 mx-auto">
-
-            <h1 class="text-gray-900 text-3xl title-font font-medium mb-6">{{ agent.user.username }} - Statistics</h1>
+            <!-- Header Section -->
+            <div class="lg:w-3/5 mx-auto flex flex-col items-center">
+                <div class="w-full lg:py-8 mb-8">
+                    <h2 class="text-base title-font text-gray-500 tracking-widest text-center">AGENT</h2>
+                    <h1 class="text-gray-900 text-4xl title-font font-bold mb-6 text-center">{{ agent.user.username }}</h1>
+                    <div class="flex justify-center space-x-6 mb-6">
+                        <a href="{% url 'agents:agent-detail' agent.pk %}" class="py-2 px-4 text-lg font-medium text-gray-600 hover:text-indigo-500">Details</a>
+                        <a href="{% url 'agents:agent-stats' agent.pk %}" class="text-indigo-500 border-b-2 border-indigo-500 py-2 px-4 text-lg font-medium">Stats</a>
+                        <a href="{% url 'agents:agent-update' agent.pk %}" class="py-2 px-4 text-lg font-medium text-gray-600 hover:text-indigo-500">Update</a>
+                    </div>
+                </div>
+            </div>
 
             <!-- Date Filter Form -->
-            <form method="get" class="mb-6">
-                <div class="flex flex-wrap items-center space-x-4">
+            <form method="get" class="bg-white shadow rounded-lg p-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                        {{ form.start_datetime.label_tag }}<br>
+                        <label class="block text-sm font-medium text-gray-700">{{ form.start_datetime.label }}</label>
                         {{ form.start_datetime }}
                     </div>
                     <div>
-                        {{ form.end_datetime.label_tag }}<br>
+                        <label class="block text-sm font-medium text-gray-700">{{ form.end_datetime.label }}</label>
                         {{ form.end_datetime }}
                     </div>
-                    <div class="mt-4">
-                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Filter</button>
+                    <div class="flex items-end">
+                        <button type="submit" class="bg-indigo-500 text-white py-2 px-4 rounded-lg shadow hover:bg-indigo-600">Filter</button>
                     </div>
                 </div>
             </form>
 
-            <!-- Statistics Overview (Existing) -->
-            <div class="mb-6">
-                <h2 class="text-lg font-medium text-gray-700 title-font mb-4">Overview</h2>
-                <ul class="list-disc pl-5 text-gray-700">
-                    <li><strong>Total Orders:</strong> {{ stats.order_count }}</li>
-                    <li><strong>Total Order Value:</strong> {{ stats.total_value|floatformat:2 }}</li>
-                    <li><strong>Average Order Value:</strong> {{ stats.average_order_value|floatformat:2 }}</li>
-                    <li><strong>Converted Leads (Sale):</strong> {{ stats.sale }}</li>
-                    <li><strong>Converted Leads (No Sale):</strong> {{ stats.no_sale }}</li>
+            <!-- Statistics Overview -->
+            <div class="bg-gray-50 shadow rounded-lg p-6 mb-10">
+                <h2 class="text-xl font-bold text-gray-700 mb-4">Overview</h2>
+                <ul class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <li class="p-4 bg-white shadow rounded-lg">
+                        <strong class="block text-gray-500">Total Orders:</strong>
+                        <span class="text-2xl font-bold text-gray-800">{{ stats.order_count }}</span>
+                    </li>
+                    <li class="p-4 bg-white shadow rounded-lg">
+                        <strong class="block text-gray-500">Total Order Value:</strong>
+                        <span class="text-2xl font-bold text-gray-800">${{ stats.total_value|floatformat:2 }}</span>
+                    </li>
+                    <li class="p-4 bg-white shadow rounded-lg">
+                        <strong class="block text-gray-500">Average Order Value:</strong>
+                        <span class="text-2xl font-bold text-gray-800">${{ stats.average_order_value|floatformat:2 }}</span>
+                    </li>
+                    <li class="p-4 bg-white shadow rounded-lg">
+                        <strong class="block text-gray-500">Lead Conversion Rate:</strong>
+                        {% if conversion_rate is not None %}
+                            <span class="text-2xl font-bold text-green-600">{{ conversion_rate|floatformat:2 }}%</span>
+                        {% else %}
+                            <span class="text-2xl font-bold text-gray-500">N/A</span>
+                        {% endif %}
+                    </li>
+
                 </ul>
-            </div>
-
-            <!-- Lead Conversion Chart (Existing) -->
-            <div class="mb-10">
-                <h2 class="text-lg font-medium text-gray-700 title-font mb-4">Lead Conversion</h2>
-                <canvas id="leadConversionChart" width="400" height="200"></canvas>
-            </div>
-
-            <!-- Order Statistics Chart (Existing) -->
-            <div class="mb-10">
-                <h2 class="text-lg font-medium text-gray-700 title-font mb-4">Order Statistics</h2>
-                <canvas id="orderStatsChart" width="400" height="200"></canvas>
             </div>
 
             <!-- Daily Order Count Chart (New) -->
@@ -67,13 +81,12 @@
 
 <!-- Include Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<!-- Load the custom script -->
 <script src="{% static 'js/agent_stats.js' %}"></script>
 
 <!-- Embed stats data as a JSON string in a hidden DOM element -->
+
 <div id="chart-data"
-     data-lead-stats='{"sale": {{ stats.sale }}, "no_sale": {{ stats.no_sale }}}'
-     data-order-stats='{"order_count": {{ stats.order_count }}, "total_value": {{ stats.total_value|floatformat:2 }}, "average_value": {{ stats.average_order_value|floatformat:2 }}}'
+     data-is-single-agent="true"
      data-daily-orders='{{ daily_orders_data_json|safe }}'
      data-monthly-revenue='{{ monthly_revenue_data_json|safe }}'>
 </div>

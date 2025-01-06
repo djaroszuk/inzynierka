@@ -121,7 +121,7 @@ class AgentDeleteView(OrganisorAndLoginRequiredMixin, generic.DeleteView):
         return reverse("agents:agent-list")
 
 
-class AgentStatsView(generic.DetailView):
+class AgentStatsView(OrganisorAndLoginRequiredMixin, generic.DetailView):
     model = Agent
     template_name = "agents/agent_stats.html"
     context_object_name = "agent"
@@ -130,7 +130,7 @@ class AgentStatsView(generic.DetailView):
         context = super().get_context_data(**kwargs)
         agent = self.object
 
-        # Initialize the filter form with GET data
+        # Filter form for date range
         form = StatisticsFilterForm(self.request.GET or None)
         context["form"] = form
 
@@ -138,14 +138,21 @@ class AgentStatsView(generic.DetailView):
         end_datetime = None
 
         if form.is_valid():
-            # If the user provided start/end datetimes, use them
             start_datetime = form.cleaned_data.get("start_datetime")
             end_datetime = form.cleaned_data.get("end_datetime")
 
-        # Now call get_stats with the filtered dates if provided
-        context["stats"] = agent.get_stats(start_datetime, end_datetime)
+        # Agent statistics
+        stats = agent.get_stats(start_datetime, end_datetime)
+        context["stats"] = stats
 
-        # The rest of your daily/monthly data retrieval remains unchanged
+        # Calculate lead conversion rate
+        total_leads = stats.get("sale", 0) + stats.get("no_sale", 0)
+        conversion_rate = (
+            (stats.get("sale", 0) / total_leads * 100) if total_leads > 0 else None
+        )
+        context["conversion_rate"] = conversion_rate
+
+        # Daily and monthly data
         daily_orders_data = agent.get_daily_order_data(days=7)
         monthly_revenue_data = agent.get_monthly_revenue_data(months=6)
 
@@ -155,42 +162,41 @@ class AgentStatsView(generic.DetailView):
         return context
 
 
-class AllAgentsStatsView(generic.TemplateView):
+class AllAgentsStatsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
     template_name = "agents/all_agents_stats.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Filter form to allow optional date filtering
+        # Filter form for optional date filtering
         form = StatisticsFilterForm(self.request.GET or None)
         context["form"] = form
 
         start_datetime = None
         end_datetime = None
-
         if form.is_valid():
             start_datetime = form.cleaned_data.get("start_datetime")
             end_datetime = form.cleaned_data.get("end_datetime")
 
         agents = Agent.objects.all()
 
-        # Initialize accumulators for aggregated stats
         total_orders = 0
         total_value = Decimal("0.0")
-        total_sale = 0
-        total_no_sale = 0
+        total_sales = 0
+        total_no_sales = 0
 
-        # Dictionaries to aggregate daily orders and monthly revenue
-        daily_orders_map = {}  # {date: total_count_across_all_agents}
-        monthly_revenue_map = {}  # {month: total_revenue_across_all_agents}
+        daily_orders_map = {}
+        monthly_revenue_map = {}
 
+        # Aggregate stats from all agents
         for agent in agents:
-            # Get agent-level stats
             stats = agent.get_stats(start_datetime, end_datetime)
+
+            # Accumulate stats
             total_orders += stats["order_count"]
             total_value += stats["total_value"]
-            total_sale += stats["sale"]
-            total_no_sale += stats["no_sale"]
+            total_sales += stats["sale"]
+            total_no_sales += stats["no_sale"]
 
             # Aggregate daily orders
             daily_data = agent.get_daily_order_data(days=7)
@@ -206,31 +212,37 @@ class AllAgentsStatsView(generic.TemplateView):
                     monthly_revenue_map.get(month, 0) + entry["revenue"]
                 )
 
-        # Compute the average order value across all agents' orders
-        average_order_value = total_value / total_orders if total_orders > 0 else 0
+        # Compute overall conversion rate
+        total_leads = total_sales + total_no_sales
+        overall_conversion_rate = (
+            (total_sales / total_leads * 100) if total_leads > 0 else None
+        )
 
-        # Prepare the aggregated stats dict
+        # Compute averages for charts
+        agent_count = agents.count()
+        average_daily_orders = [
+            {"date": d, "average_count": c / agent_count if agent_count > 0 else 0}
+            for d, c in daily_orders_map.items()
+        ]
+        average_monthly_revenue = [
+            {"month": m, "average_revenue": r / agent_count if agent_count > 0 else 0}
+            for m, r in monthly_revenue_map.items()
+        ]
+
+        # Pass aggregated stats and chart data to context
         context["stats"] = {
             "order_count": total_orders,
             "total_value": total_value,
-            "average_order_value": average_order_value,
-            "sale": total_sale,
-            "no_sale": total_no_sale,
+            "average_order_value": (
+                total_value / total_orders if total_orders > 0 else 0
+            ),
+            "sale": total_sales,
+            "no_sale": total_no_sales,
+            "conversion_rate": overall_conversion_rate,  # Use the overall conversion rate here
         }
 
-        # Convert the daily and monthly maps to sorted lists
-        daily_orders_data = [
-            {"date": d, "count": c} for d, c in daily_orders_map.items()
-        ]
-        daily_orders_data.sort(key=lambda x: x["date"])
-
-        monthly_revenue_data = [
-            {"month": m, "revenue": r} for m, r in monthly_revenue_map.items()
-        ]
-        monthly_revenue_data.sort(key=lambda x: x["month"])
-
-        context["daily_orders_data_json"] = json.dumps(daily_orders_data)
-        context["monthly_revenue_data_json"] = json.dumps(monthly_revenue_data)
+        context["daily_orders_data_json"] = json.dumps(average_daily_orders)
+        context["monthly_revenue_data_json"] = json.dumps(average_monthly_revenue)
 
         return context
 

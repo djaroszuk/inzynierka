@@ -1,10 +1,82 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>{{ product.name }}</h1>
-<p>{{ product.description }}</p>
-<p>Price: ${{ product.price }}</p>
-<a href="{% url 'products:product-update' product.pk %}">Edit</a>
-<a href="{% url 'products:product-delete' product.pk %}">Delete</a>
-<a href="{% url 'products:product-list' %}">Back to List</a>
+
+<section class="text-gray-600 body-font overflow-hidden">
+    <div class="container px-5 py-24 mx-auto">
+        <div class="lg:w-3/5 mx-auto flex flex-col items-center">
+            <div class="w-full lg:py-8 mb-6">
+                <!-- Product Header -->
+                <h2 class="text-base title-font text-gray-500 tracking-widest text-center">PRODUCT</h2>
+                <h1 class="text-gray-900 text-4xl title-font font-medium mb-6 text-center">{{ product.name }}</h1>
+
+                <!-- Action Links -->
+                <div class="flex justify-center mb-8">
+                    <a href="{% url 'products:product-detail' product.pk %}" class="text-indigo-500 border-b-2 border-indigo-500 py-2 px-4 text-lg">
+                        Details
+                    </a>
+                    <a href="{% url 'products:product-update' product.pk %}" class="py-2 px-4 text-lg text-gray-600 hover:text-indigo-500">
+                        Edit
+                    </a>
+                    <a href="{% url 'products:product-delete' product.pk %}" class="py-2 px-4 text-lg text-gray-600 hover:text-indigo-500">
+                        Delete
+                    </a>
+                </div>
+
+                <!-- Product Details -->
+                <div class="flex flex-col items-center border-t border-gray-200 py-4 w-full">
+                    <div class="flex justify-between w-full py-2">
+                        <span class="text-gray-500 text-lg">Description</span>
+                        <span class="text-gray-900 text-lg">{{ product.description|default:"No description available" }}</span>
+                    </div>
+                    <hr class="w-full border-gray-300">
+                    <div class="flex justify-between w-full py-2">
+                        <span class="text-gray-500 text-lg">Price</span>
+                        <span class="text-gray-900 text-lg">${{ product.price|floatformat:2 }}</span>
+                    </div>
+                </div>
+
+                <!-- Price History -->
+                <div class="mt-6 w-full">
+                    <h2 class="text-gray-900 text-2xl font-bold mb-4">Price History</h2>
+                    <div class="overflow-auto">
+                        <table class="table-auto w-full text-left whitespace-no-wrap">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-3 text-gray-500 text-sm bg-gray-100">Changed At</th>
+                                    <th class="px-4 py-3 text-gray-500 text-sm bg-gray-100">Old Price</th>
+                                    <th class="px-4 py-3 text-gray-500 text-sm bg-gray-100">New Price</th>
+                                    <th class="px-4 py-3 text-gray-500 text-sm bg-gray-100">Delta</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for change in price_history %}
+                                <tr class="border-b border-gray-300">
+                                    <td class="px-4 py-3">{{ change.changed_at|date:"M d, Y H:i" }}</td>
+                                    <td class="px-4 py-3">${{ change.old_price }}</td>
+                                    <td class="px-4 py-3">${{ change.new_price }}</td>
+                                    <td class="px-4 py-3">
+                                        {% if change.price_delta > 0 %}
+                                        <span class="text-green-500">+${{ change.price_delta }}</span>
+                                        {% elif change.price_delta < 0 %}
+                                        <span class="text-red-500">-${{ change.absolute_delta }}</span>
+                                        {% else %}
+                                        <span class="text-gray-500">No Change</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-gray-500">No price history available.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 {% endblock %}

@@ -7,5 +7,5 @@ class OrganisorAndLoginRequiredMixin(AccessMixin):
 
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_authenticated or not request.user.is_organisor:
-            return redirect("leads:lead-list")
+            return redirect("/")
         return super().dispatch(request, *args, **kwargs)

@@ -1,13 +1,37 @@
 {% extends "base.html" %}
+{% load tailwind_filters %}
 
 {% block content %}
-    <a href="{% url 'agents:agent-list'%}">Go back to leads</a>
-    <h1>
-        Are you sure you want to delete agent?
-    </h1>
-    <form method="post">
-        {% csrf_token %}
-        {{form}}
-        <button type="submit">submit</button>
-    </form>
-{% endblock content %}
+
+<section class="text-gray-600 body-font">
+    <div class="container mx-auto px-6 py-12">
+        <div class="bg-white shadow-lg rounded-lg p-8 lg:w-3/4 mx-auto">
+            <!-- Page Header -->
+            <div class="mb-6">
+                <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-widest">Agent</h2>
+                <h1 class="text-gray-900 text-2xl font-bold mt-2">Confirm Deletion</h1>
+            </div>
+
+            <!-- Confirmation Message -->
+            <div class="mb-6">
+                <p class="text-gray-500">Are you sure you want to delete the agent "<strong>{{ agent.user.username }}</strong>"?</p>
+            </div>
+
+            <!-- Form -->
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+                {{ form }}
+                <div class="flex justify-center space-x-4">
+                    <button type="submit" class="w-1/2 bg-red-500 text-white hover:bg-red-600 px-4 py-2 rounded-md">
+                        Confirm
+                    </button>
+                    <a href="{% url 'agents:agent-detail' agent.pk %}" class="w-1/2 text-center bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+{% endblock %}

@@ -7,12 +7,36 @@ from orders.models import OrderProduct
 from .forms import ProductForm, AddProductForm
 from clients.models import Client
 from orders.forms import StatisticsFilterForm
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 
 
 class ProductListView(generic.ListView):
-    model = Product
     template_name = "products/product_list.html"
     context_object_name = "products"
+    paginate_by = 10  # Number of items per page
+
+    def get_queryset(self):
+        """Return all products ordered by name."""
+        return Product.objects.all().order_by("name")
+
+    def get_context_data(self, **kwargs):
+        """Add pagination to the context."""
+        context = super().get_context_data(**kwargs)
+
+        # Get the paginated queryset
+        products = self.get_queryset()
+        paginator = Paginator(products, self.paginate_by)
+        page = self.request.GET.get("page", 1)
+
+        try:
+            paginated_products = paginator.page(page)
+        except PageNotAnInteger:
+            paginated_products = paginator.page(1)
+        except EmptyPage:
+            paginated_products = paginator.page(paginator.num_pages)
+
+        context["products"] = paginated_products  # Add paginated products to context
+        return context
 
 
 class ProductDetailView(generic.DetailView):
@@ -20,13 +44,24 @@ class ProductDetailView(generic.DetailView):
     template_name = "products/product_detail.html"
     context_object_name = "product"
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add the price history to the context
+        context["price_history"] = self.object.price_history.all().order_by(
+            "-changed_at"
+        )
+        return context
+
 
 class ProductUpdateView(SuccessMessageMixin, generic.UpdateView):
     model = Product
     form_class = ProductForm
     template_name = "products/product_update.html"
-    success_url = reverse_lazy("products:product-list")
     success_message = "Product updated successfully!"
+
+    def get_success_url(self):
+        # Redirect to the updated product's detail page
+        return reverse_lazy("products:product-detail", kwargs={"pk": self.object.pk})
 
 
 class ProductDeleteView(SuccessMessageMixin, generic.DeleteView):
@@ -34,6 +69,14 @@ class ProductDeleteView(SuccessMessageMixin, generic.DeleteView):
     template_name = "products/product_delete.html"
     success_url = reverse_lazy("products:product-list")
     success_message = "Product deleted successfully!"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Set cancel_url to the product's detail page
+        context["cancel_url"] = reverse_lazy(
+            "products:product-detail", kwargs={"pk": self.object.pk}
+        )
+        return context
 
 
 class ProductCreateView(generic.CreateView):

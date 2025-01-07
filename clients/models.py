@@ -3,8 +3,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.db.models import Sum, F, Count
 from django.db.models.functions import TruncMonth
-from django.utils import timezone
-import datetime
+from django.utils.timezone import now, timedelta
 
 
 class Client(models.Model):
@@ -50,7 +49,7 @@ class Client(models.Model):
 
     def total_revenue(self, start_date=None, end_date=None):
         """Calculate total revenue for this client, considering only accepted orders."""
-        queryset = self.orders.filter(status="Accepted")
+        queryset = self.orders.filter(status="Paid")
 
         if start_date:
             queryset = queryset.filter(date_created__gte=start_date)
@@ -68,7 +67,7 @@ class Client(models.Model):
 
     def total_products_sold(self, start_date=None, end_date=None):
         """Calculate total products sold for this client, considering only accepted orders."""
-        queryset = self.orders.filter(status="Accepted")
+        queryset = self.orders.filter(status="Paid")
 
         if start_date:
             queryset = queryset.filter(date_created__gte=start_date)
@@ -79,7 +78,7 @@ class Client(models.Model):
 
     def order_statistics(self, start_date=None, end_date=None):
         """Calculate order-related statistics for this client."""
-        queryset = self.orders.filter(status="Accepted")
+        queryset = self.orders.filter(status="Paid")
 
         if start_date:
             queryset = queryset.filter(date_created__gte=start_date)
@@ -97,7 +96,7 @@ class Client(models.Model):
         Calculate the monthly number of accepted orders and total amount spent.
         Returns a dictionary with 'labels', 'order_counts', and 'total_spent'.
         """
-        queryset = self.orders.filter(status="Accepted")
+        queryset = self.orders.filter(status="Paid")
 
         if start_date:
             queryset = queryset.filter(date_created__gte=start_date)
@@ -128,53 +127,12 @@ class Client(models.Model):
         Calculate the monthly Average Order Value (AOV) for the client.
         Returns a dictionary with 'labels' and 'average_order_value'.
         """
-        # Handle the case where there are no orders
-        if not self.orders.exists():
-            return {
-                "labels": [],
-                "average_order_value": [],
-            }
+        queryset = self.orders.filter(status="Paid")
 
-        if not start_date:
-            # Get the earliest order's date_created and convert to date, set day=1
-            start_order = self.orders.earliest("date_created")
-            start_date = start_order.date_created.replace(day=1).date()
-        else:
-            # Ensure start_date is a date object
-            if isinstance(start_date, datetime.datetime):
-                start_date = start_date.date()
-
-        if not end_date:
-            end_date = timezone.now().date()
-        else:
-            # Ensure end_date is a date object
-            if isinstance(end_date, datetime.datetime):
-                end_date = end_date.date()
-
-        # Generate all months between start_date and end_date
-        months = []
-        current = start_date.replace(day=1)
-        while current <= end_date:
-            months.append(current.strftime("%Y-%m"))
-            # Move to the next month
-            year = current.year + (current.month // 12)
-            month = (current.month % 12) + 1
-            try:
-                current = current.replace(year=year, month=month, day=1)
-            except ValueError:
-                # Handle month rollover if needed
-                current = datetime.date(year, month, 1)
-
-        # Fetch existing monthly data
-        queryset = self.orders.filter(
-            status="Accepted", date_created__gte=start_date, date_created__lte=end_date
-        )
-        if not queryset.exists():
-            # If no orders are found in the date range, return zeros for all months
-            return {
-                "labels": months,
-                "average_order_value": [0.0] * len(months),
-            }
+        if start_date:
+            queryset = queryset.filter(date_created__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(date_created__lte=end_date)
 
         monthly_data = (
             queryset.annotate(month=TruncMonth("date_created"))
@@ -188,51 +146,38 @@ class Client(models.Model):
             .order_by("month")
         )
 
-        # Create a dictionary from the queryset for easy lookup
-        data_dict = {entry["month"].strftime("%Y-%m"): entry for entry in monthly_data}
-
-        # Prepare the final data, filling in zeros where necessary
-        average_order_value = []
-        for month in months:
-            if month in data_dict and data_dict[month]["order_count"] > 0:
-                aov = (
-                    float(data_dict[month]["total_spent"])
-                    / data_dict[month]["order_count"]
-                )
-                average_order_value.append(round(aov, 2))  # Rounded to 2 decimal places
-            else:
-                average_order_value.append(0.0)
-
         return {
-            "labels": months,
-            "average_order_value": average_order_value,
+            "labels": [entry["month"].strftime("%Y-%m") for entry in monthly_data],
+            "average_order_value": [
+                (
+                    round((entry["total_spent"] or 0) / entry["order_count"], 2)
+                    if entry["order_count"] > 0
+                    else 0
+                )
+                for entry in monthly_data
+            ],
         }
 
-    def lifetime_value_over_time(self, group_by="year"):
+    def lifetime_value_over_time(self):
         """
-        Calculate the customer's lifetime value grouped by the specified time period.
-        group_by can be 'month', 'quarter', or 'year'.
-        Returns a dictionary with grouped periods and cumulative revenue.
+        Calculate the customer's lifetime value grouped by month for the last year.
+        Returns a dictionary with grouped months and cumulative revenue.
         """
-        from django.db.models.functions import TruncMonth, TruncQuarter, TruncYear
-        from django.db.models import Sum
 
-        # Define the grouping logic
-        if group_by == "month":
-            group_by_trunc = TruncMonth("date_created")
-        elif group_by == "quarter":
-            group_by_trunc = TruncQuarter("date_created")
-        elif group_by == "year":
-            group_by_trunc = TruncYear("date_created")
-        else:
-            raise ValueError(
-                "Invalid group_by value. Choose 'month', 'quarter', or 'year'."
-            )
+        # Define the time frame for the last year
+        end_date = now()  # Current date and time
+        start_date = end_date - timedelta(days=365)  # 12 months ago
 
-        # Aggregate revenue grouped by the chosen period
-        orders = self.orders.filter(status="Accepted")
+        # Aggregate revenue grouped by month within the last year
+        orders = self.orders.filter(
+            status="Paid",
+            date_created__gte=start_date,
+            date_created__lte=end_date,
+        )
+
+        # Group by month
         grouped_data = (
-            orders.annotate(period=group_by_trunc)
+            orders.annotate(period=TruncMonth("date_created"))
             .values("period")
             .annotate(
                 total_revenue=Sum(
@@ -247,7 +192,7 @@ class Client(models.Model):
         ltv_data = {"labels": [], "ltv_values": []}
         for entry in grouped_data:
             cumulative_revenue += entry["total_revenue"] or 0
-            ltv_data["labels"].append(entry["period"].strftime("%Y-%m-%d"))
+            ltv_data["labels"].append(entry["period"].strftime("%Y-%m"))
             ltv_data["ltv_values"].append(cumulative_revenue)
 
         return ltv_data

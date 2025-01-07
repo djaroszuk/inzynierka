@@ -1,18 +1,16 @@
 document.addEventListener("DOMContentLoaded", () => {
     const ltvDataElement = document.getElementById("ltvData");
-    const baselineValueElement = document.getElementById("baselineValue");
 
-    if (!ltvDataElement || !baselineValueElement) {
-        console.error("LTV data or baseline value not found in the template.");
+    if (!ltvDataElement) {
+        console.error("LTV data not found in the template.");
         return;
     }
 
-    let ltvData, baselineValue;
+    let ltvData;
     try {
         ltvData = JSON.parse(ltvDataElement.textContent);
-        baselineValue = 300; // Set baseline value to 300
     } catch (error) {
-        console.error("Failed to parse Lifetime Value data or baseline value:", error);
+        console.error("Failed to parse Lifetime Value data:", error);
         return;
     }
 
@@ -21,10 +19,10 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    renderLifetimeValueChart(ltvData.labels, ltvData.ltv_values, baselineValue);
+    renderLifetimeValueChart(ltvData.labels, ltvData.ltv_values);
 });
 
-function renderLifetimeValueChart(labels, ltvValues, baselineValue) {
+function renderLifetimeValueChart(labels, ltvValues) {
     const ctx = document.getElementById("lifetimeValueChart").getContext("2d");
 
     new Chart(ctx, {
@@ -52,35 +50,12 @@ function renderLifetimeValueChart(labels, ltvValues, baselineValue) {
                 },
                 title: {
                     display: true,
-                    text: "Lifetime Value (LTV) with Baseline",
-                },
-                annotation: {
-                    annotations: {
-                        baseline: {
-                            type: "line",
-                            yMin: baselineValue,
-                            yMax: baselineValue,
-                            borderColor: "rgba(255, 99, 132, 1)", // Red baseline
-                            borderWidth: 2,
-                            label: {
-                                content: `Baseline ($${baselineValue})`,
-                                enabled: true,
-                                position: "end",
-                                backgroundColor: "rgba(255, 99, 132, 0.8)",
-                                color: "#ffffff",
-                                font: {
-                                    size: 12,
-                                },
-                            },
-                        },
-                    },
+                    text: "Lifetime Value (LTV)",
                 },
             },
             scales: {
                 y: {
                     beginAtZero: false,
-                    min: Math.min(...ltvValues, baselineValue) - 50, // Ensure baseline is visible
-                    max: Math.max(...ltvValues, baselineValue) + 50,
                     ticks: {
                         callback: function (value) {
                             return `$${value}`;

@@ -11,8 +11,7 @@ from datetime import timedelta
 from django.utils import timezone
 import json
 from django.core.serializers.json import DjangoJSONEncoder
-
-
+from agents.mixins import OrganisorAndLoginRequiredMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
 
@@ -20,7 +19,7 @@ class ClientListView(LoginRequiredMixin, generic.ListView):
     model = Client
     template_name = "clients/client_list.html"
     context_object_name = "clients"
-    paginate_by = 2  # Number of items per page
+    paginate_by = 10  # Number of items per page
 
     def get_queryset(self):
         """Return a list of clients filtered by the search query."""
@@ -52,7 +51,7 @@ class ClientListView(LoginRequiredMixin, generic.ListView):
                 # If the value is not a valid integer, just ignore the filter
                 pass
 
-        return queryset
+        return queryset.order_by("-converted_date")
 
     def get_context_data(self, **kwargs):
         """Add the search form and pagination to the context."""
@@ -162,7 +161,7 @@ class ContactCreateView(LoginRequiredMixin, generic.CreateView):
         )
 
 
-class ClientStatisticsView(generic.TemplateView):
+class ClientStatisticsView(LoginRequiredMixin, generic.TemplateView):
     template_name = "clients/client_statistics.html"
 
     def get_context_data(self, **kwargs):
@@ -215,7 +214,7 @@ class ClientStatisticsView(generic.TemplateView):
         return context
 
 
-class AllClientsStatisticsView(generic.TemplateView):
+class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
     template_name = "clients/all_clients_statistics.html"
 
     def get_context_data(self, **kwargs):
@@ -228,9 +227,6 @@ class AllClientsStatisticsView(generic.TemplateView):
         # Extract filtering variables
         start_datetime = None
         end_datetime = None
-        group_by = self.request.GET.get(
-            "group_by", "month"
-        )  # Default grouping: monthly
 
         if form.is_valid():
             # Retrieve validated data from the form
@@ -249,6 +245,7 @@ class AllClientsStatisticsView(generic.TemplateView):
         monthly_order_stats = []
         monthly_aov = []
         ltv_data = {"labels": [], "ltv_values": []}
+        unique_clients_with_orders = set()
 
         # Prepare cumulative LTV
         cumulative_revenue_by_period = {}
@@ -264,6 +261,10 @@ class AllClientsStatisticsView(generic.TemplateView):
             ]
             all_clients_statistics["total_orders"] += stats["total_orders"]
 
+            # Track clients who made orders
+            if stats["total_orders"] > 0:
+                unique_clients_with_orders.add(client.pk)
+
             # Append monthly data for charts
             monthly_order_stats.append(
                 client.monthly_order_stats(
@@ -277,7 +278,7 @@ class AllClientsStatisticsView(generic.TemplateView):
             )
 
             # Fetch cumulative LTV for the client
-            client_ltv = client.lifetime_value_over_time(group_by=group_by)
+            client_ltv = client.lifetime_value_over_time()
             for label, value in zip(client_ltv["labels"], client_ltv["ltv_values"]):
                 if label not in cumulative_revenue_by_period:
                     cumulative_revenue_by_period[label] = 0
@@ -312,7 +313,9 @@ class AllClientsStatisticsView(generic.TemplateView):
         context["monthly_aov"] = consolidated_monthly_aov_json
         context["ltv_data"] = ltv_data_json
         context["baseline_value"] = baseline_value
-        context["total_clients"] = total_clients
+        context["total_clients"] = len(
+            unique_clients_with_orders
+        )  # Update with unique clients count
 
         return context
 

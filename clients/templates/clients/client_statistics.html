@@ -1,66 +1,103 @@
-<!-- clients/templates/clients/client_statistics.html -->
-
 {% extends "base.html" %}
 {% load static %}
 
 {% block content %}
-<section class="statistics container py-4">
-  <h1 class="mb-4">Statistics for {{ client.first_name }} {{ client.last_name }}</h1>
+<a href="{% url 'clients:client-detail' client.client_number %}" class="text-indigo-500 inline-flex items-center mb-4">
+    Go back to client
+</a>
+<section class="text-gray-600 body-font overflow-hidden">
+    <div class="container px-5 py-20 mx-auto">
+        <div class="lg:w-4/5 mx-auto">
+            <!-- Header Section -->
+            <div class="lg:w-3/5 mx-auto flex flex-col items-center">
+                <div class="w-full lg:py-8 mb-8">
+                    <h1 class="text-gray-900 text-4xl title-font font-bold mb-6 text-center">Statistics for {{ client.first_name }} {{ client.last_name }}</h1>
+                    <h2 class="text-base text-gray-500 tracking-widest text-center">Client Number: {{ client.client_number }}</h2>
+                </div>
+            </div>
 
-  <!-- Filter Form -->
-  <form method="get" class="mb-4">
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Filter</button>
-  </form>
+            <!-- Date Filter Form -->
+            <form method="get" class="bg-white shadow rounded-lg p-6 mb-10">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ form.start_datetime.label }}</label>
+                        {{ form.start_datetime }}
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">{{ form.end_datetime.label }}</label>
+                        {{ form.end_datetime }}
+                    </div>
+                    <div class="flex items-end">
+                        <button type="submit" class="bg-indigo-500 text-white py-2 px-4 rounded-lg shadow hover:bg-indigo-600">Filter</button>
+                    </div>
+                </div>
+            </form>
 
-  <!-- Display Statistics -->
-  <ul class="list-unstyled mb-4">
-    <li><strong>Total Revenue:</strong> ${{ client_statistics.total_revenue }}</li>
-    <li>
-      <strong>Total Products Sold:</strong>
-      <a href="{% url 'products:all-products-statistics' %}">
-        {{ client_statistics.total_products_sold }}
-      </a>
-    </li>
-    <li><strong>Total Orders:</strong> {{ client_statistics.total_orders }}</li>
-  </ul>
+            <!-- Statistics Table -->
+            <div class="bg-gray-50 shadow rounded-lg p-6 mb-10">
+                <h2 class="text-xl font-bold text-gray-700 mb-4">Overview</h2>
+                <table class="table-auto w-full text-left whitespace-no-wrap">
+                    <thead>
+                        <tr class="bg-gray-200">
+                            <th class="px-4 py-2 text-gray-700 font-medium">Metric</th>
+                            <th class="px-4 py-2 text-gray-700 font-medium">Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="px-4 py-2">Total Revenue</td>
+                            <td class="px-4 py-2">${{ client_statistics.total_revenue }}</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-2">Total Products Sold</td>
+                            <td class="px-4 py-2">{{ client_statistics.total_products_sold }}</td>
+                        </tr>
+                        <tr>
+                            <td class="px-4 py-2">Total Orders</td>
+                            <td class="px-4 py-2">{{ client_statistics.total_orders }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-  <!-- Order Frequency and Spending Chart -->
-  <div class="mb-5">
-    <h2 class="mb-3">Monthly Order Frequency &amp; Spending</h2>
-    {% if monthly_order_stats %}
-      <canvas id="orderFrequencyChart" width="400" height="200"></canvas>
-    {% else %}
-      <p>No order frequency data available for the selected date range.</p>
-    {% endif %}
-  </div>
+            <!-- Monthly Order Frequency and Spending Chart -->
+            <div class="bg-white shadow rounded-lg p-6 mb-10">
+                <h2 class="text-lg font-medium text-gray-700 mb-4">Monthly Order Frequency &amp; Spending</h2>
+                {% if monthly_order_stats %}
+                    <canvas id="orderFrequencyChart" width="400" height="200"></canvas>
+                {% else %}
+                    <p class="text-gray-500">No order frequency data available for the selected date range.</p>
+                {% endif %}
+            </div>
 
-  <!-- Average Order Value Chart -->
-  <div class="mb-5">
-    <h2 class="mb-3">Monthly Average Order Value (AOV)</h2>
-    {% if monthly_aov %}
-      <canvas id="averageOrderValueChart" width="400" height="200"></canvas>
-    {% else %}
-      <p>No Average Order Value data available for the selected date range.</p>
-    {% endif %}
-  </div>
+            <!-- Monthly Average Order Value (AOV) Chart -->
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-medium text-gray-700 mb-4">Monthly Average Order Value (AOV)</h2>
+                {% if monthly_aov %}
+                    <canvas id="averageOrderValueChart" width="400" height="200"></canvas>
+                {% else %}
+                    <p class="text-gray-500">No Average Order Value data available for the selected date range.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
 </section>
 
-<!-- Load Chart.js -->
+<!-- Include Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{% static 'js/client_statistics.js' %}"></script>
-<script src="{% static 'js/average_order_value.js' %}"></script> <!-- New JS file -->
+<script src="{% static 'js/average_order_value.js' %}"></script>
 
-<!-- Embed Data using separate <script> tags -->
+<!-- Embed Data -->
 {% if monthly_order_stats %}
-  <script id="monthlyOrderStatsData" type="application/json">
+<script id="monthlyOrderStatsData" type="application/json">
     {{ monthly_order_stats|safe }}
-  </script>
+</script>
 {% endif %}
 
 {% if monthly_aov %}
-  <script id="averageOrderValueData" type="application/json">
+<script id="averageOrderValueData" type="application/json">
     {{ monthly_aov|safe }}
-  </script>
+</script>
 {% endif %}
 {% endblock %}

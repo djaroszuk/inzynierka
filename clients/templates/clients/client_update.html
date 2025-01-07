@@ -3,7 +3,9 @@
 
 
 {% block content %}
-
+<a href="{% url 'clients:client-detail' client.client_number %}" class="text-indigo-500 inline-flex items-center mb-4">
+    Go back to client
+</a>
 <section class="text-gray-600 body-font overflow-hidden">
     <div class="container px-5 py-24 mx-auto">
         <div class="lg:w-3/5 mx-auto">
@@ -11,9 +13,6 @@
                 <h1 class="text-2xl font-medium text-gray-900">
                     Update Client
                 </h1>
-                <a href="{% url 'clients:client-list' %}" class="text-indigo-500 hover:underline">
-                    Go back to clients
-                </a>
             </div>
             <form method="post" class="bg-white p-6 rounded-lg shadow-md">
                 {% csrf_token %}

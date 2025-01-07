@@ -2,16 +2,24 @@
 {% load tailwind_filters %}
 
 {% block content %}
-<div class ="max-w-lg mx-auto">
+<div class="max-w-lg mx-auto">
     <form method="post">
         {% csrf_token %}
-        {{form|crispy}}
+        {{ form|crispy }}
         <div class="py-3 border-t border-gray-300 mt-5"></div>
         <div class="w-full">
-            <button type = "submit" class="w-1/2 bg-indigo-500 text-white hover:bg-blue-700 px-3 py-1 rounded-md mx-auto block">
-                Create a lead
+            <!-- Create a Lead Button -->
+            <button type="submit" class="w-1/2 bg-indigo-500 text-white hover:bg-blue-700 px-3 py-1 rounded-md mx-auto block">
+                Create a Lead
             </button>
         </div>
     </form>
+
+    <!-- Add buttons below the form -->
+    <div class="mt-5">
+        <a href="{% url 'leads:lead-upload'%}"class="w-1/2 bg-green-500 text-white hover:bg-green-700 px-3 py-1 rounded-md mx-auto block text-center">
+            Upload Many Leads
+        </a>
+    </div>
 </div>
 {% endblock content %}

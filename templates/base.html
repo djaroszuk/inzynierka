@@ -11,6 +11,19 @@
 <body>
     <div class="max-w-7xl mx-auto ">
     {% include 'navbar.html' %}
+            <!-- Messages Section -->
+            <div class="container mx-auto mt-4">
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="p-4 mb-4 rounded-md
+                        {% if message.tags == 'success' %}bg-green-100 text-green-800{% endif %}
+                        {% if message.tags == 'error' %}bg-red-100 text-red-800{% endif %}
+                        {% if message.tags == 'warning' %}bg-yellow-100 text-yellow-800{% endif %}">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
 
 
     {% block content %}

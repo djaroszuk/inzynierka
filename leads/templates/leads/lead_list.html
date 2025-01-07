@@ -41,22 +41,14 @@
                     </button>
                 </form>
                 {% endif %}
+                {% if request.user.is_organisor %}
+                <div class="flex space-x-4">
+                    <a href="{% url 'leads:lead-create'%}" class="bg-green-500 text-white py-2 px-4 rounded">Create new lead</a>
+                </div>
+                {% endif %}
             </div>
         </div>
 
-        <!-- Notifications -->
-        {% if messages %}
-        <div class="container mx-auto my-4">
-            {% for message in messages %}
-            <div class="p-4 mb-4 rounded
-                {% if message.tags == 'success' %}bg-green-100 text-green-800{% endif %}
-                {% if message.tags == 'warning' %}bg-yellow-100 text-yellow-800{% endif %}
-                {% if message.tags == 'error' %}bg-red-100 text-red-800{% endif %}">
-                {{ message }}
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
 
         <!-- Lead Cards -->
         {% if leads %}

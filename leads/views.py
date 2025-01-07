@@ -1,6 +1,5 @@
 import openpyxl
 from django.contrib import messages
-from django.db.models import Count
 from django.urls import reverse_lazy
 from django.views import generic, View
 from agents.mixins import OrganisorAndLoginRequiredMixin
@@ -32,15 +31,25 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
     paginate_by = 9  # Set pagination to 10 leads per page
 
     def dispatch(self, request, *args, **kwargs):
-        query_params = request.GET.copy()
+        # Skip redirection logic for POST requests
+        if request.method == "POST":
+            return self.post(request, *args, **kwargs)
 
-        # Default `page` to 1 if missing
-        if "page" not in query_params:
-            query_params["page"] = 1
+        # Only apply redirection logic for GET requests
+        if request.method == "GET":
+            query_params = request.GET.copy()
 
-        # Redirect only if `page` is missing or invalid
-        if query_params != request.GET:
-            return redirect(f"{reverse('leads:lead-list')}?{query_params.urlencode()}")
+            # Default `page` to 1 if missing
+            if "page" not in query_params:
+                query_params["page"] = 1
+
+            # Redirect only if `page` is missing or invalid
+            if query_params != request.GET and query_params["page"] != request.GET.get(
+                "page"
+            ):
+                return redirect(
+                    f"{reverse('leads:lead-list')}?{query_params.urlencode()}"
+                )
 
         return super().dispatch(request, *args, **kwargs)
 
@@ -49,7 +58,7 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
         Retrieves the filtered queryset based on the category and unassigned_only parameters.
         """
         user = self.request.user
-        category_name = self.request.GET.get("category", "new").strip()
+        category_name = self.request.GET.get("category", "").strip()
         unassigned_only = self.request.GET.get("unassigned_only")
 
         if user.is_organisor:
@@ -101,7 +110,10 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
         Handles the POST request to assign the oldest unassigned lead to the current agent.
         """
         user = self.request.user
-        if not user.is_organisor:  # Only agents can take a lead
+
+        # Ensure only agents can take leads
+        if not user.is_organisor and hasattr(user, "agent") and user.agent:
+            # Retrieve the oldest unassigned lead
             oldest_unassigned_lead = (
                 Lead.objects.filter(agent__isnull=True, category__name="new")
                 .order_by("date_created")
@@ -113,15 +125,20 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
                 oldest_unassigned_lead.agent = user.agent
                 oldest_unassigned_lead.save()
 
-                # Provide success feedback
+                # Success feedback
                 messages.success(
                     request,
                     f"You successfully took the lead: {oldest_unassigned_lead.first_name} {oldest_unassigned_lead.last_name}.",
                 )
             else:
-                # Provide feedback when no unassigned leads are available
+                # No unassigned leads available
                 messages.warning(request, "No unassigned leads available.")
-        return redirect("leads:lead-list")
+        else:
+            messages.error(request, "You are not authorized to take leads.")
+
+        # Redirect and preserve query parameters
+        query_params = request.GET.urlencode()
+        return redirect(f"{reverse('leads:lead-list')}?{query_params}")
 
 
 class LeadCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
@@ -206,53 +223,6 @@ class LandingPageView(generic.TemplateView):
 
 def landing_page(request):
     return render(request, "landing.html")
-
-
-class CategoryListView(LoginRequiredMixin, generic.ListView):
-    template_name = "leads/category_list.html"
-    context_object_name = "category_list"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        user = self.request.user
-
-        # Filter leads based on user type (organisor or agent)
-        if user.is_organisor:
-            queryset = Lead.objects.all()
-        else:
-            queryset = Lead.objects.filter(agent__user=user)
-
-        # Add unassigned lead count to the context
-        context.update(
-            {"unassigned_lead_count": queryset.filter(category__isnull=True).count()}
-        )
-        return context
-
-    def get_queryset(self):
-        queryset = Category.objects.all()
-        # Annotate categories with the count of associated leads
-        return queryset.annotate(lead_count=Count("leads"))
-
-
-class CategoryDetailView(LoginRequiredMixin, generic.DetailView):
-    template_name = "leads/category_detail.html"
-    context_object_name = "category"
-
-    def get_context_data(self, **kwargs):
-        context = super(CategoryDetailView, self).get_context_data(**kwargs)
-        leads = self.get_object().leads.all()
-        context.update({"leads": leads})
-        return context
-
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_organisor:
-            queryset = Category.objects.all()  # Get all categories for the organiser
-        else:
-            queryset = Category.objects.filter(
-                lead__agent__user=user
-            )  # Get categories for agent
-        return queryset
 
 
 class LeadCategoryUpdateView(LoginRequiredMixin, generic.UpdateView):

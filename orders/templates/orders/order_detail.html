@@ -2,15 +2,6 @@
 
 {% block content %}
 <div class="container mx-auto p-6">
-    {% if messages %}
-        <div class="messages space-y-4">
-            {% for message in messages %}
-                <div class="alert {{ message.tags }} p-4 rounded shadow bg-indigo-100 text-indigo-800">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        </div>
-    {% endif %}
 
     <a href="{% url 'orders:order-list' %}" class="inline-block mb-4 text-indigo-500 hover:underline">&larr; Back to Orders</a>
 

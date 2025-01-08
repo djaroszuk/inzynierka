@@ -1,19 +1,19 @@
-from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views import generic
 from django.contrib.messages.views import SuccessMessageMixin
 from .models import Product
 from orders.models import OrderProduct
-from .forms import ProductForm, AddProductForm, TimeFrameSelectionForm
-from clients.models import Client
+from .forms import ProductForm, TimeFrameSelectionForm
 from orders.forms import StatisticsFilterForm
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from datetime import timedelta, datetime
 from django.db.models import Sum, Count
 from django.http import JsonResponse
+from django.contrib.auth.mixins import LoginRequiredMixin
+from agents.mixins import OrganisorAndLoginRequiredMixin
 
 
-class ProductListView(generic.ListView):
+class ProductListView(LoginRequiredMixin, generic.ListView):
     template_name = "products/product_list.html"
     context_object_name = "products"
     paginate_by = 10  # Number of items per page
@@ -42,7 +42,7 @@ class ProductListView(generic.ListView):
         return context
 
 
-class ProductDetailView(generic.DetailView):
+class ProductDetailView(LoginRequiredMixin, generic.DetailView):
     model = Product
     template_name = "products/product_detail.html"
     context_object_name = "product"
@@ -56,7 +56,9 @@ class ProductDetailView(generic.DetailView):
         return context
 
 
-class ProductUpdateView(SuccessMessageMixin, generic.UpdateView):
+class ProductUpdateView(
+    OrganisorAndLoginRequiredMixin, SuccessMessageMixin, generic.UpdateView
+):
     model = Product
     form_class = ProductForm
     template_name = "products/product_update.html"
@@ -67,7 +69,9 @@ class ProductUpdateView(SuccessMessageMixin, generic.UpdateView):
         return reverse_lazy("products:product-detail", kwargs={"pk": self.object.pk})
 
 
-class ProductDeleteView(SuccessMessageMixin, generic.DeleteView):
+class ProductDeleteView(
+    OrganisorAndLoginRequiredMixin, SuccessMessageMixin, generic.DeleteView
+):
     model = Product
     template_name = "products/product_delete.html"
     success_url = reverse_lazy("products:product-list")
@@ -82,7 +86,7 @@ class ProductDeleteView(SuccessMessageMixin, generic.DeleteView):
         return context
 
 
-class ProductCreateView(generic.CreateView):
+class ProductCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
     model = Product
     form_class = ProductForm
     template_name = "products/product_create.html"
@@ -90,38 +94,7 @@ class ProductCreateView(generic.CreateView):
     success_url = reverse_lazy("products:product-list")
 
 
-class ClientProductsView(generic.TemplateView):
-    template_name = "products/client_products.html"
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
-        context["client"] = client
-        context["products"] = (
-            client.products.all()
-        )  # Products associated with the client
-        return context
-
-
-class AddProductsToClientView(generic.FormView):
-    template_name = "products/add_products_to_client.html"
-    form_class = AddProductForm
-
-    def form_valid(self, form):
-        client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
-        products = form.cleaned_data["products"]
-        client.products.add(
-            *products
-        )  # Associate the selected products with the client
-        return redirect(
-            reverse_lazy(
-                "products:client-products",
-                kwargs={"client_number": client.client_number},
-            )
-        )
-
-
-class ProductSalesDetailView(generic.ListView):
+class ProductSalesDetailView(OrganisorAndLoginRequiredMixin, generic.ListView):
     template_name = "products/product_sales_detail.html"
     context_object_name = "product_sales"
 
@@ -210,7 +183,7 @@ class ProductSalesDetailView(generic.ListView):
         return context
 
 
-class ProductSalesChartView(generic.TemplateView):
+class ProductSalesChartView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
     template_name = "products/sales_chart.html"
 
     def get_context_data(self, **kwargs):
@@ -238,7 +211,7 @@ def product_sales_data(request):
     # Fetch sales data for the selected time frame
     sales_data = (
         OrderProduct.objects.filter(
-            order__status="Accepted", order__date_created__range=(start_date, end_date)
+            order__status="Paid", order__date_created__range=(start_date, end_date)
         )
         .values("product_name")
         .annotate(

@@ -10,7 +10,8 @@
                 <h2 class="text-base title-font text-gray-500 tracking-widest text-center">PRODUCT</h2>
                 <h1 class="text-gray-900 text-4xl title-font font-medium mb-6 text-center">{{ product.name }}</h1>
 
-                <!-- Action Links -->
+                <!-- Action Links (Visible only for organisor users) -->
+                {% if request.user.is_organisor %}
                 <div class="flex justify-center mb-8">
                     <a href="{% url 'products:product-detail' product.pk %}" class="text-indigo-500 border-b-2 border-indigo-500 py-2 px-4 text-lg">
                         Details
@@ -22,17 +23,17 @@
                         Delete
                     </a>
                 </div>
+                {% endif %}
 
-                <!-- Product Details -->
                 <div class="flex flex-col items-center border-t border-gray-200 py-4 w-full">
                     <div class="flex justify-between w-full py-2">
                         <span class="text-gray-500 text-lg">Description</span>
-                        <span class="text-gray-900 text-lg">{{ product.description|default:"No description available" }}</span>
+                        <span class="text-gray-900 text-lg ml-4">{{ product.description|default:"No description available" }}</span>
                     </div>
                     <hr class="w-full border-gray-300">
                     <div class="flex justify-between w-full py-2">
                         <span class="text-gray-500 text-lg">Price</span>
-                        <span class="text-gray-900 text-lg">${{ product.price|floatformat:2 }}</span>
+                        <span class="text-gray-900 text-lg ml-4">${{ product.price|floatformat:2 }}</span>
                     </div>
                 </div>
 

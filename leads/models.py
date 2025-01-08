@@ -2,13 +2,11 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.contrib.auth.models import AbstractUser
 from django.dispatch import receiver
-from clients.models import Client, Contact
 from django.db.models.signals import post_migrate
 from django.apps import apps
 from django.db.models.functions import TruncDay
 from django.db.models import Count
 from django.utils.timezone import now, timedelta
-from django.utils import timezone
 
 
 class User(AbstractUser):
@@ -61,7 +59,7 @@ class Agent(models.Model):
 
         daily_orders = (
             self.orders.filter(
-                status="Accepted", date_created__date__range=[start_date, today]
+                status="Paid", date_created__date__range=[start_date, today]
             )
             .annotate(day=TruncDay("date_created"))
             .values("day")
@@ -91,7 +89,7 @@ class Agent(models.Model):
         start_month = today.replace(day=1) - timedelta(days=30 * (months - 1))
 
         monthly_orders = (
-            self.orders.filter(status="Accepted", date_created__date__gte=start_month)
+            self.orders.filter(status="Paid", date_created__date__gte=start_month)
             .annotate(month=TruncMonth("date_created"))
             .values("month")
             .annotate(
@@ -211,55 +209,53 @@ def post_user_created_signal(sender, instance, created, **kwargs):
             instance.save()
 
 
-@receiver(post_save, sender=Lead)
-def handle_lead_conversion(sender, instance, created, **kwargs):
-    """
-    Handle actions after a Lead's `convert` field is set to True.
-    - Triggers only when `convert` is True.
-    """
+# @receiver(post_save, sender=Lead)
+# def handle_lead_conversion(sender, instance, created, **kwargs):
+#     """
+#     Handle actions after a Lead's `convert` field is set to True.
+#     - Triggers only when `convert` is True.
+#     """
+#     if instance.convert:  # Trigger only when `convert` is True
+#         print(f"Signal 'handle_lead_conversion' triggered for Lead: {instance}")
 
-    if instance.convert:  # Trigger only when `convert` is True
-        print(f"Signal 'handle_lead_conversion' triggered for Lead: {instance}")
+#         # Mark the lead as converted
+#         instance.is_converted = True
+#         instance.convert = False  # Reset `convert` to prevent retriggering
+#         instance.save(update_fields=["is_converted", "convert"])
 
-        # Mark the lead as converted
-        instance.is_converted = True
-        instance.convert = False  # Reset `convert` to prevent retriggering
-        instance.save(update_fields=["is_converted", "convert"])
+#         # Set conversion date if not already set
+#         if not instance.conversion_date:
+#             instance.conversion_date = now()
+#             instance.save(update_fields=["conversion_date"])
 
-        # Set conversion date if not already set
-        if not instance.conversion_date:
-            instance.conversion_date = timezone.now()
-            instance.save(update_fields=["conversion_date"])
+#         # Handle the conversion logic for category and client creation
+#         if instance.category and instance.category.name.lower() == "sale":
+#             client, created_client = Client.objects.get_or_create(
+#                 email=instance.email,
+#                 defaults={
+#                     "first_name": instance.first_name,
+#                     "last_name": instance.last_name,
+#                     "age": instance.age,
+#                     "phone_number": instance.phone_number,
+#                 },
+#             )
 
-        # Handle the conversion logic for category and client creation
-        if instance.category and instance.category.name.lower() == "sale":
-            # Check if a client with the same email already exists
-            client, created_client = Client.objects.get_or_create(
-                email=instance.email,
-                defaults={
-                    "first_name": instance.first_name,
-                    "last_name": instance.last_name,
-                    "age": instance.age,
-                    "phone_number": instance.phone_number,
-                },
-            )
+#             if created_client:
+#                 print(
+#                     f"A new client was created for {instance.first_name} {instance.last_name} ({instance.email})."
+#                 )
 
-            if created_client:
-                print(
-                    f"A new client was created for {instance.first_name} {instance.last_name} ({instance.email})."
-                )
-
-                # Create a contact with category 'Other' with info about when the client was created
-                Contact.objects.create(
-                    client=client,
-                    reason=Contact.ReasonChoices.OTHER,
-                    description=(
-                        f"Client created on {now().strftime('%Y-%m-%d %H:%M:%S')}. "
-                        f"Lead comment: {instance.comment or 'No comment provided.'}"
-                    ),
-                )
-            else:
-                print(f"Client with email {instance.email} already exists.")
+#                 # Create a contact with category 'Other' with info about when the client was created
+#                 Contact.objects.create(
+#                     client=client,
+#                     reason=Contact.ReasonChoices.OTHER,
+#                     description=(
+#                         f"Client created on {now().strftime('%Y-%m-%d %H:%M:%S')}. "
+#                         f"Lead comment: {instance.comment or 'No comment provided.'}"
+#                     ),
+#                 )
+#             else:
+#                 print(f"Client with email {instance.email} already exists.")
 
 
 def create_default_categories(sender, **kwargs):

@@ -19,6 +19,7 @@
             <a href="{% url 'orders:order-list' %}" class="mr-5 hover:text-gray-900">Orders</a>
 
             <!-- Dropdown for Statistics -->
+            {% if request.user.is_organisor %}
             <div class="relative group">
                 <a href="#" class="mr-5 hover:text-gray-900 inline-flex items-center">
                     Statistics
@@ -28,13 +29,14 @@
                 </a>
                 <!-- Dropdown Menu -->
                 <div class="absolute hidden group-hover:block bg-white border border-gray-200 rounded shadow-lg py-2 w-48" style="height: 300px; width: 180px;">
-                    <a href="{% url 'orders:order-statistics' %}"class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Sales Statistics</a>
+                    <a href="{% url 'orders:order-statistics' %}"class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Orders Statistics</a>
                     <a href="{% url 'products:all-products-statistics' %}"class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Products Statistics</a>
                     <a href="{% url 'agents:all-agents-statistics' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Agents Statistics</a>
                     <a href="{% url 'clients:all-client-statistics' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Clients Statistics</a>
                     <a href="{% url 'products:sales_chart' %}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Top selling products</a>
                 </div>
             </div>
+            {%endif%}
             {% endif %}
         </nav>
         {% if request.user.is_authenticated %}

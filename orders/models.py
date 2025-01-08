@@ -14,8 +14,8 @@ from django.utils.timezone import now
 class OrderManager(models.Manager):
 
     def total_revenue(self, start_date=None, end_date=None):
-        """Calculate total revenue, optionally filtered by date range and order status (Accepted)."""
-        queryset = self.filter(status="Accepted")  # Only consider accepted orders
+        """Calculate total revenue, optionally filtered by date range and order status (Paid)."""
+        queryset = self.filter(status="Paid")  # Only consider paid orders
         if start_date:
             queryset = queryset.filter(date_created__gte=start_date)
         if end_date:
@@ -31,8 +31,8 @@ class OrderManager(models.Manager):
         )
 
     def total_products_sold(self, start_date=None, end_date=None):
-        """Calculate total quantity of products sold, optionally filtered by date range and order status (Accepted)."""
-        queryset = self.filter(status="Accepted")  # Only consider accepted orders
+        """Calculate total quantity of products sold, optionally filtered by date range and order status (Paid)."""
+        queryset = self.filter(status="Paid")  # Only consider Paid orders
         if start_date:
             queryset = queryset.filter(date_created__gte=start_date)
         if end_date:
@@ -41,17 +41,17 @@ class OrderManager(models.Manager):
         return queryset.aggregate(total=Sum("order_products__quantity"))["total"] or 0
 
     def order_statistics(self):
-        """Calculate overall statistics for orders, considering only accepted orders."""
+        """Calculate overall statistics for orders, considering only Paid orders."""
         return {
             "total_revenue": self.total_revenue(),
             "total_products_sold": self.total_products_sold(),
-            "total_orders": self.filter(status="Accepted").count(),
+            "total_orders": self.filter(status="Paid").count(),
         }
 
     def orders_by_day(self):
         """Get the total orders grouped by day."""
         orders = (
-            self.filter(status="Accepted")
+            self.filter(status="Paid")
             .annotate(day=TruncDay("date_created"))
             .values("day")
             .annotate(total_orders=Count("id"))
@@ -169,7 +169,7 @@ class OrderProduct(models.Model):
         Get the total quantity and total revenue of each product sold.
         Optionally filter by date range.
         """
-        queryset = cls.objects.filter(order__status="Accepted")
+        queryset = cls.objects.filter(order__status="Paid")
 
         # Apply date filters if provided
         if start_date:

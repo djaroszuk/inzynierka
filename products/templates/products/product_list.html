@@ -5,9 +5,11 @@
   <div class="container px-5 py-16 mx-auto">
     <div class="w-full mb-8 py-4 flex justify-between items-center border-b border-gray-300">
       <h1 class="text-3xl font-semibold text-gray-900">Products</h1>
+      {% if request.user.is_organisor %}
       <a href="{% url 'products:product-create' %}" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
         Add New Product
       </a>
+      {% endif %}
     </div>
 
     <!-- Product List Table -->
@@ -45,40 +47,39 @@
       </div>
     </div>
 
-<!-- Pagination -->
-<div class="mt-4 flex justify-center">
-    <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
-        {% if products.has_previous %}
-        <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page=1"
-           class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
-            First
-        </a>
-        <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page={{ products.previous_page_number }}"
-           class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
-            Previous
-        </a>
-        {% endif %}
+    <!-- Pagination -->
+    <div class="mt-4 flex justify-center">
+        <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
+            {% if products.has_previous %}
+            <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page=1"
+               class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                First
+            </a>
+            <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page={{ products.previous_page_number }}"
+               class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                Previous
+            </a>
+            {% endif %}
 
-        {% for page_num in products.paginator.page_range %}
-        <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page={{ page_num }}"
-           class="px-3 py-2 border border-gray-300 {% if page_num == products.number %}bg-indigo-100 text-indigo-600{% else %}text-gray-700 bg-white hover:bg-gray-100{% endif %}">
-            {{ page_num }}
-        </a>
-        {% endfor %}
+            {% for page_num in products.paginator.page_range %}
+            <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page={{ page_num }}"
+               class="px-3 py-2 border border-gray-300 {% if page_num == products.number %}bg-indigo-100 text-indigo-600{% else %}text-gray-700 bg-white hover:bg-gray-100{% endif %}">
+                {{ page_num }}
+            </a>
+            {% endfor %}
 
-        {% if products.has_next %}
-        <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page={{ products.next_page_number }}"
-           class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
-            Next
-        </a>
-        <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page={{ products.paginator.num_pages }}"
-           class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
-            Last
-        </a>
-        {% endif %}
-    </nav>
-</div>
-
+            {% if products.has_next %}
+            <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page={{ products.next_page_number }}"
+               class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                Next
+            </a>
+            <a href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}page={{ products.paginator.num_pages }}"
+               class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                Last
+            </a>
+            {% endif %}
+        </nav>
+    </div>
 
     {% else %}
     <p class="text-gray-500 text-center">No products available.</p>

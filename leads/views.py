@@ -5,6 +5,7 @@ from django.views import generic, View
 from agents.mixins import OrganisorAndLoginRequiredMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Lead, Category
+from clients.models import Client
 from .forms import (
     LeadForm,
     CustomUserCreationForm,
@@ -14,6 +15,8 @@ from .forms import (
 )
 from django.shortcuts import render, reverse, redirect
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.utils.html import format_html
+from django.utils.timezone import now
 
 
 class SignupView(generic.CreateView):
@@ -226,7 +229,6 @@ def landing_page(request):
 
 
 class LeadCategoryUpdateView(LoginRequiredMixin, generic.UpdateView):
-
     template_name = "leads/lead_category_update.html"
     form_class = LeadCategoryUpdateForm
 
@@ -235,12 +237,63 @@ class LeadCategoryUpdateView(LoginRequiredMixin, generic.UpdateView):
         if user.is_organisor:
             queryset = Lead.objects.all()  # All leads for the organiser
         else:
-            # Agent leads filtered by the agent's profile
-            queryset = Lead.objects.filter(agent__user=user)
+            queryset = Lead.objects.filter(
+                agent__user=user
+            )  # Leads assigned to the agent
         return queryset
 
+    def form_valid(self, form):
+        lead = self.object
+
+        # Check if the lead is being converted
+        if lead.convert:
+            lead.is_converted = True
+            lead.convert = False  # Prevent retriggering
+            lead.save(update_fields=["is_converted", "convert"])
+
+            # Set conversion date if not already set
+            if not lead.conversion_date:
+                lead.conversion_date = now()
+                lead.save(update_fields=["conversion_date"])
+
+            # Handle client creation if the category is "sale"
+            if lead.category and lead.category.name.lower() == "sale":
+                client, created_client = Client.objects.get_or_create(
+                    email=lead.email,
+                    defaults={
+                        "first_name": lead.first_name,
+                        "last_name": lead.last_name,
+                        "age": lead.age,
+                        "phone_number": lead.phone_number,
+                    },
+                )
+
+                if created_client:
+                    client_url = reverse(
+                        "clients:client-detail", args=[client.client_number]
+                    )
+                    messages.success(
+                        self.request,
+                        format_html(
+                            "Lead converted successfully. A new client with client number {} was created. "
+                            "Click <a href='{}' class='underline text-blue-500'>here</a> to view the client.",
+                            client.client_number,
+                            client_url,
+                        ),
+                    )
+                else:
+                    messages.info(
+                        self.request,
+                        f"Lead converted successfully, but the client with email {lead.email} already exists.",
+                    )
+            else:
+                messages.success(self.request, "Lead converted successfully.")
+
+        # Always redirect to the lead detail view
+        return redirect(self.get_success_url())
+
     def get_success_url(self):
-        return reverse("leads:lead-detail", kwargs={"pk": self.get_object().id})
+        return reverse("leads:lead-detail", kwargs={"pk": self.object.pk})
 
 
 class LeadUploadView(LoginRequiredMixin, View):

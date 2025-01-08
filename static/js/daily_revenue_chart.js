@@ -44,7 +44,7 @@ function renderDailyRevenueChart(labels, revenueData, ordersData) {
                 },
                 title: {
                     display: true,
-                    text: "Daily Revenue and Orders (This Month)",
+                    text: "Daily Revenue and Orders",
                 },
                 tooltip: {
                     callbacks: {

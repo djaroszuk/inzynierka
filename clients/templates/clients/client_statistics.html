@@ -33,31 +33,29 @@
                 </div>
             </form>
 
-            <!-- Statistics Table -->
+            <!-- Statistics Overview -->
             <div class="bg-gray-50 shadow rounded-lg p-6 mb-10">
                 <h2 class="text-xl font-bold text-gray-700 mb-4">Overview</h2>
-                <table class="table-auto w-full text-left whitespace-no-wrap">
-                    <thead>
-                        <tr class="bg-gray-200">
-                            <th class="px-4 py-2 text-gray-700 font-medium">Metric</th>
-                            <th class="px-4 py-2 text-gray-700 font-medium">Value</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="px-4 py-2">Total Revenue</td>
-                            <td class="px-4 py-2">${{ client_statistics.total_revenue }}</td>
-                        </tr>
-                        <tr>
-                            <td class="px-4 py-2">Total Products Sold</td>
-                            <td class="px-4 py-2">{{ client_statistics.total_products_sold }}</td>
-                        </tr>
-                        <tr>
-                            <td class="px-4 py-2">Total Orders</td>
-                            <td class="px-4 py-2">{{ client_statistics.total_orders }}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <ul class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <li class="p-4 bg-white shadow rounded-lg">
+                        <strong class="block text-gray-500">Total Revenue:</strong>
+                        <span class="text-2xl font-bold text-gray-800">
+                            ${{ client_statistics.total_revenue }}
+                        </span>
+                    </li>
+                    <li class="p-4 bg-white shadow rounded-lg">
+                        <strong class="block text-gray-500">Total Products Sold:</strong>
+                        <span class="text-2xl font-bold text-gray-800">
+                            {{ client_statistics.total_products_sold }}
+                        </span>
+                    </li>
+                    <li class="p-4 bg-white shadow rounded-lg">
+                        <strong class="block text-gray-500">Total Orders:</strong>
+                        <span class="text-2xl font-bold text-gray-800">
+                            {{ client_statistics.total_orders }}
+                        </span>
+                    </li>
+                </ul>
             </div>
 
             <!-- Monthly Order Frequency and Spending Chart -->

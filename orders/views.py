@@ -1,25 +1,38 @@
-from django.views import generic
-from django.shortcuts import get_object_or_404
-from .models import Order, OrderProduct
-from django.contrib.auth.mixins import LoginRequiredMixin
-from products.models import Product
-from clients.models import Client, Contact
-from datetime import datetime
-from .forms import StatisticsFilterForm, OrderSearchForm
-from django.shortcuts import redirect, render, reverse
-from django.contrib import messages
+# Standard Library Imports
+import uuid
+import json
+from datetime import datetime, timedelta
+from decimal import Decimal
+
+# Django Core Imports
+from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.http import HttpResponseRedirect
 from django.utils.http import urlencode
-from django.contrib.sites.shortcuts import get_current_site
-import uuid
-from django.core.mail import send_mail
-from django.utils.timezone import now, timedelta
-from django.db.models.functions import TruncDay
-from django.db.models import Count, Sum, F
-import json
+from django.utils.timezone import now
 from django.utils.dateparse import parse_datetime
-from decimal import Decimal
+from django.core.mail import send_mail
+from django.db.models import Count, Sum, F
+from django.db.models.functions import TruncDay
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.contrib.sites.shortcuts import get_current_site
+from django.contrib import messages
+from django.views import generic
+
+# Django Authentication Mixins
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+# Custom Mixins
+from agents.mixins import OrganisorAndLoginRequiredMixin
+
+# Forms
+from .forms import OrderSearchForm
+from products.forms import TimeFrameSelectionForm
+
+
+# Models
+from .models import Order, OrderProduct
+from products.models import Product
+from clients.models import Client, Contact
 
 
 class OrderListView(LoginRequiredMixin, generic.ListView):
@@ -64,50 +77,50 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
 
     def post(self, request, *args, **kwargs):
         if request.user.is_organisor and "delete_pending_orders" in request.POST:
-            cutoff_time = now() - timedelta(
-                minutes=1
-            )  # Adjust the time frame as needed
+            cutoff_time = now() - timedelta(minutes=1)
             pending_orders = Order.objects.filter(
                 status="Pending", date_created__lt=cutoff_time
             )
 
-            count = 0
-            for order in pending_orders:
-                # Restore product quantities
-                for order_product in order.order_products.all():
-                    product = order_product.product
-                    if product:
-                        product.stock_quantity += order_product.quantity
-                        product.save()
+            count = pending_orders.count()
+            if count > 0:
+                for order in pending_orders:
+                    # Restore product quantities and create contact records
+                    for order_product in order.order_products.select_related("product"):
+                        if order_product.product:
+                            order_product.product.stock_quantity += (
+                                order_product.quantity
+                            )
+                            order_product.product.save()
 
-                # Create a contact record on the client's profile
-                Contact.objects.create(
-                    client=order.client,
-                    reason=Contact.ReasonChoices.SALES_OFFER,  # Use appropriate reason choice
-                    description=(f"Order #{order.id} was canceled due to inactivity. "),
-                    contact_date=now(),
-                    user=self.request.user.userprofile,  # Assuming userprofile is available
+                    Contact.objects.create(
+                        client=order.client,
+                        reason=Contact.ReasonChoices.SALES_OFFER,
+                        description=f"Order #{order.id} was canceled due to inactivity.",
+                        contact_date=now(),
+                        user=request.user.userprofile,
+                    )
+                    order.status = "Canceled"
+                    order.save()
+
+                messages.success(
+                    request,
+                    f"{count} pending orders older than 48 hours were canceled, stock was restored, and clients notified.",
+                )
+            else:
+                messages.warning(
+                    request,
+                    "No pending orders older than 48 hours were found to be canceled.",
                 )
 
-                # Update the order status to "Canceled"
-                order.status = "Canceled"
-                order.save()
-                count += 1
-
-            messages.success(
-                request,
-                f"{count} pending orders older than 48 hours were marked as canceled, stock was restored, "
-                f"and clients were notified.",
-            )
-
-        return redirect("orders:order-list")  # Redirect to the order list
+        return redirect("orders:order-list")
 
 
-class ClientOrdersView(generic.ListView):
+class ClientOrdersView(LoginRequiredMixin, generic.ListView):
     model = Order
     template_name = "orders/client_orders.html"
     context_object_name = "orders"
-    paginate_by = 15  # Same pagination as OrderListView
+    paginate_by = 15
 
     def get_queryset(self):
         # Filter orders by the specific client
@@ -482,42 +495,49 @@ class OrderConfirmView(generic.View):
         )
 
 
-class OrderStatisticsView(generic.TemplateView):
-    template_name = "orders/statistics.html"
+class OrderStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
+    template_name = "orders/order-statistics.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
         # Initialize the form with GET data
-        form = StatisticsFilterForm(self.request.GET or None)
+        form = TimeFrameSelectionForm(self.request.GET or None)
         context["form"] = form
 
-        # Initialize filtering variables
-        start_datetime = None
-        end_datetime = None
+        # Determine the selected time frame
+        time_frame = form.cleaned_data.get("time_frame") if form.is_valid() else None
+        if not time_frame:
+            time_frame = datetime.now().strftime(
+                "%Y-%m"
+            )  # Default to the current month
 
-        if form.is_valid():
-            start_datetime = form.cleaned_data.get("start_datetime")
-            end_datetime = form.cleaned_data.get("end_datetime")
+        # Calculate the start and end dates based on the selected time frame
+        if time_frame == "last_30_days":
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=30)
+        else:
+            year, month = map(int, time_frame.split("-"))
+            start_date = datetime(year, month, 1)
+            next_month = month % 12 + 1
+            year = year + (1 if next_month == 1 else 0)
+            end_date = datetime(year, next_month, 1)
 
         # Calculate statistics
         total_revenue = Order.objects.total_revenue(
-            start_date=start_datetime, end_date=end_datetime
+            start_date=start_date, end_date=end_date
         )
         total_products_sold = Order.objects.total_products_sold(
-            start_date=start_datetime, end_date=end_datetime
+            start_date=start_date, end_date=end_date
         )
         total_orders = Order.objects.filter(
-            date_created__gte=start_datetime if start_datetime else datetime.min,
-            date_created__lte=end_datetime if end_datetime else datetime.max,
+            date_created__gte=start_date, date_created__lt=end_date
         ).count()
 
-        # Get daily revenue for the current month
-        today = now().date()
-        start_date = today.replace(day=1)  # First day of the current month
+        # Get daily revenue for the selected month
         orders = (
-            Order.objects.filter(status="Accepted")
-            .filter(date_created__date__range=[start_date, today])
+            Order.objects.filter(status="Paid")
+            .filter(date_created__date__range=[start_date, end_date])
             .annotate(day=TruncDay("date_created"))
             .values("day")
             .annotate(
@@ -540,23 +560,20 @@ class OrderStatisticsView(generic.TemplateView):
 
         # Calculate order completion rate
         total_orders_count = Order.objects.count()
-        accepted_orders_count = Order.objects.filter(status="Accepted").count()
+        accepted_orders_count = Order.objects.filter(status="Paid").count()
         completion_rate = (
-            (accepted_orders_count / total_orders_count) * 100
+            round((accepted_orders_count / total_orders_count) * 100, 2)
             if total_orders_count > 0
             else 0
         )
 
-        # Update context
+        # Consolidate statistics
         context["statistics"] = {
             "total_revenue": total_revenue,
             "total_products_sold": total_products_sold,
             "total_orders": total_orders,
+            "completion_rate": completion_rate,
         }
         context["daily_revenue"] = json.dumps(daily_revenue)
-        context["completion_rate"] = completion_rate
-        context["accepted_orders"] = accepted_orders_count
-        context["remaining_orders"] = total_orders_count - accepted_orders_count
-        context["total_orders_count"] = total_orders_count
 
         return context

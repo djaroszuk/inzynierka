@@ -36,7 +36,7 @@ class Client(models.Model):
     def update_status(self):
         """Updates client status to 'Important' if they exceed a threshold of accepted orders."""
         threshold = 2  # Number of accepted orders to qualify as 'Important'
-        if self.orders.filter(status="Accepted").count() > threshold:
+        if self.orders.filter(status="Paid").count() > threshold:
             self.status = self.StatusChoices.IMPORTANT
         else:
             self.status = self.StatusChoices.REGULAR

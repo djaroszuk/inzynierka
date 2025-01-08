@@ -1,10 +1,18 @@
 {% extends "base.html" %}
+{% load tailwind_filters %}
 
 {% block content %}
-  <h2>Create a New Product</h2>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">Create Product</button>
-  </form>
-{% endblock %}
+<div class="max-w-lg mx-auto">
+    <h2 class="text-2xl font-semibold text-center mb-4">Create a New Product</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form|crispy }}
+        <div class="py-3 border-t border-gray-300 mt-5"></div>
+        <div class="w-full">
+            <button type="submit" class="w-1/2 bg-indigo-500 text-white hover:bg-blue-700 px-3 py-1 rounded-md mx-auto block">
+                Create Product
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock content %}

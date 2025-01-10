@@ -1,6 +1,7 @@
 # Standard Library Imports
 import uuid
 import json
+import csv
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -17,6 +18,8 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib import messages
 from django.views import generic
+from django.http import HttpResponse
+
 
 # Django Authentication Mixins
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -74,6 +77,33 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
         context["orders"] = paginated_orders
         context["search_form"] = OrderSearchForm(self.request.GET)
         return context
+
+    def get(self, request, *args, **kwargs):
+        if request.GET.get("export") == "csv":
+            return self.export_to_csv()
+        return super().get(request, *args, **kwargs)
+
+    def export_to_csv(self):
+        """Generate a CSV file with all orders."""
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="orders.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(["Order ID", "Client", "Status", "Date Created", "Total Price"])
+
+        orders = self.get_queryset()
+        for order in orders:
+            writer.writerow(
+                [
+                    order.id,
+                    f"{order.client.first_name} {order.client.last_name}",
+                    order.status,
+                    order.date_created,
+                    order.total_price,
+                ]
+            )
+
+        return response
 
     def post(self, request, *args, **kwargs):
         if request.user.is_organisor and "delete_pending_orders" in request.POST:
@@ -161,6 +191,36 @@ class ClientOrdersView(LoginRequiredMixin, generic.ListView):
         context["search_form"] = OrderSearchForm(self.request.GET)  # Retain search form
         return context
 
+    def get(self, request, *args, **kwargs):
+        # Check if the user wants to export to CSV
+        if request.GET.get("export") == "csv":
+            return self.export_to_csv()
+
+        # Otherwise, handle as normal GET request
+        return super().get(request, *args, **kwargs)
+
+    def export_to_csv(self):
+        """Generate a CSV file with client-specific orders."""
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="client_orders.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(["Order ID", "Client", "Status", "Date Created", "Total Price"])
+
+        orders = self.get_queryset()
+        for order in orders:
+            writer.writerow(
+                [
+                    order.id,
+                    f"{order.client.first_name} {order.client.last_name}",
+                    order.status,
+                    order.date_created,
+                    order.total_price,
+                ]
+            )
+
+        return response
+
 
 class OrderDetailView(LoginRequiredMixin, generic.DetailView):
     model = Order
@@ -187,9 +247,10 @@ class OrderDetailView(LoginRequiredMixin, generic.DetailView):
         return context
 
     def post(self, request, *args, **kwargs):
-        """Handle the 'Mark as Paid' button."""
+        """Handle actions for Mark as Paid and Cancel Order buttons."""
         order = self.get_object()
 
+        # Handle "Mark as Paid" functionality
         if "mark_as_paid" in request.POST:
             if order.status != "Paid":  # Only update if not already paid
                 order.status = "Paid"
@@ -210,7 +271,7 @@ class OrderDetailView(LoginRequiredMixin, generic.DetailView):
                 send_mail(
                     subject,
                     message,
-                    "your-email@example.com",  # From email
+                    "your-email@example.com",  # Replace with your "from" email
                     [recipient],
                     fail_silently=False,
                 )
@@ -219,6 +280,51 @@ class OrderDetailView(LoginRequiredMixin, generic.DetailView):
             else:
                 messages.warning(
                     request, f"Order #{order.id} is already marked as Paid."
+                )
+
+        # Handle "Cancel Order" functionality
+        elif "cancel_order" in request.POST:
+            if order.status == "Paid":
+                messages.error(
+                    request,
+                    f"Order #{order.id} cannot be canceled because it has already been completed (status: Paid).",
+                )
+            elif order.status == "Canceled":
+                messages.warning(request, f"Order #{order.id} is already canceled.")
+            else:
+                # Update order status to Canceled
+                order.status = "Canceled"
+                order.save()
+
+                # Create a contact record for the client
+                Contact.objects.create(
+                    client=order.client,
+                    reason=Contact.ReasonChoices.CUSTOMER_REQUEST,
+                    description=f"Order #{order.id} was canceled due to the client's request.",
+                    contact_date=now(),
+                    user=request.user.userprofile,
+                )
+
+                # Send email confirmation (optional)
+                subject = f"Order #{order.id} Cancellation Confirmation"
+                message = (
+                    f"Dear {order.client.name},\n\n"
+                    f"Your Order #{order.id} has been successfully canceled as per your request.\n"
+                    f"If you have any questions, please contact our support team.\n\n"
+                    f"Best regards,\n"
+                    f"Your Company Name"
+                )
+                recipient = order.client.email  # Assuming the client has an email field
+                send_mail(
+                    subject,
+                    message,
+                    "your-email@example.com",  # Replace with your "from" email
+                    [recipient],
+                    fail_silently=False,
+                )
+
+                messages.success(
+                    request, f"Order #{order.id} has been successfully canceled."
                 )
 
         # Redirect back to the same detail page
@@ -248,7 +354,7 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
     def get_context_data(self, **kwargs):
         """Add the list of products and discount options to the context."""
         context = super().get_context_data(**kwargs)
-        context["products"] = Product.objects.all()
+        context["products"] = Product.objects.all().order_by("price")
 
         # Convert discount choices to a list of tuples
         context["discount_choices"] = [
@@ -534,8 +640,15 @@ class OrderStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
             date_created__gte=start_date, date_created__lt=end_date
         ).count()
 
+        # Find the biggest and smallest orders using the total_price property
+        orders = Order.objects.filter(
+            date_created__gte=start_date, date_created__lt=end_date
+        )
+        biggest_order = max(orders, key=lambda order: order.total_price, default=None)
+        smallest_order = min(orders, key=lambda order: order.total_price, default=None)
+
         # Get daily revenue for the selected month
-        orders = (
+        orders_by_day = (
             Order.objects.filter(status="Paid")
             .filter(date_created__date__range=[start_date, end_date])
             .annotate(day=TruncDay("date_created"))
@@ -555,7 +668,7 @@ class OrderStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
                 "total_revenue": float(entry["total_revenue"] or 0),
                 "total_orders": entry["total_orders"],
             }
-            for entry in orders
+            for entry in orders_by_day
         ]
 
         # Calculate order completion rate
@@ -573,6 +686,8 @@ class OrderStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
             "total_products_sold": total_products_sold,
             "total_orders": total_orders,
             "completion_rate": completion_rate,
+            "biggest_order": biggest_order,
+            "smallest_order": smallest_order,
         }
         context["daily_revenue"] = json.dumps(daily_revenue)
 

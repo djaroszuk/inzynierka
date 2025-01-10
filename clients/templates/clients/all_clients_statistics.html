@@ -8,8 +8,8 @@
             <!-- Header Section -->
             <div class="lg:w-3/5 mx-auto flex flex-col items-center">
                 <div class="w-full lg:py-8 mb-8">
-                    <h1 class="text-gray-900 text-4xl title-font font-bold mb-6 text-center">
-                        Statistics for All Clients
+                    <h1 class="text-gray-900 text-5xl title-font font-bold mb-6 text-center">
+                        Clients statistics
                     </h1>
                 </div>
             </div>
@@ -36,6 +36,33 @@
                     </div>
                 </div>
             </form>
+
+            <!-- Top 3 Clients Section -->
+            <div class="bg-gray-50 shadow rounded-lg p-6 mb-10">
+                <h2 class="text-xl font-bold text-gray-700 mb-4">Top 3 Clients</h2>
+                {% if best_clients %}
+                <table class="table-auto w-full text-left bg-white shadow rounded-lg">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-2">Client Number</th>
+                            <th class="px-4 py-2">Total Revenue</th>
+                            <th class="px-4 py-2">Total Orders</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for client in best_clients %}
+                        <tr class="border-t">
+                            <td class="px-4 py-2">{{ client.number }}</td>
+                            <td class="px-4 py-2">${{ client.total_revenue }}</td>
+                            <td class="px-4 py-2">{{ client.total_orders }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="text-gray-500">No data available for top clients in the selected date range.</p>
+                {% endif %}
+            </div>
 
             <!-- Statistics Overview -->
             <div class="bg-gray-50 shadow rounded-lg p-6 mb-10">
@@ -82,7 +109,7 @@
 
             <!-- Lifetime Value Chart -->
             <div class="bg-white shadow rounded-lg p-6">
-                <h2 class="text-lg font-medium text-gray-700 mb-4">Lifetime Value (LTV) with Baseline</h2>
+                <h2 class="text-lg font-medium text-gray-700 mb-4">Lifetime Value (LTV)</h2>
                 {% if ltv_data %}
                     <canvas id="lifetimeValueChart" width="400" height="200"></canvas>
                 {% else %}

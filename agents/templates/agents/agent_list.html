@@ -20,7 +20,6 @@
         <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {% for agent in agents %}
             <div class="p-4 border rounded-lg shadow-md bg-white hover:shadow-lg transition-shadow flex">
-                <!-- Aesthetic Rectangle -->
                 <div class="w-2 bg-gradient-to-b from-indigo-500 to-indigo-300 rounded-l-md"></div>
                 <div class="ml-4">
                     <h2 class="text-xl font-medium text-gray-900">{{ agent.user.username }}</h2>
@@ -37,7 +36,6 @@
             {% endfor %}
         </div>
 
-        <!-- Pagination -->
         <div class="mt-4 flex justify-center">
             <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
                 {% if agents.has_previous %}

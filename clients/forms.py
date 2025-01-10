@@ -4,6 +4,8 @@ from .models import Client, Contact
 
 
 class ClientForm(forms.ModelForm):
+    """Form for non-organizer users."""
+
     class Meta:
         model = Client
         fields = ["first_name", "last_name", "age", "email", "phone_number"]
@@ -13,6 +15,17 @@ class ClientForm(forms.ModelForm):
             "age": "Age",
             "email": "Email",
             "phone_number": "Phone Number",
+        }
+
+
+class OrganisorClientForm(ClientForm):
+    """Extended form for organizers to include the 'status' field."""
+
+    class Meta(ClientForm.Meta):
+        fields = ClientForm.Meta.fields + ["status"]
+        labels = {
+            **ClientForm.Meta.labels,
+            "status": "Status",
         }
 
 

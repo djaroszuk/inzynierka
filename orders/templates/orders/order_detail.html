@@ -11,7 +11,7 @@
         <h2 class="text-lg text-gray-600 font-semibold">Order ID: {{ order.id }}</h2>
         <p class="mt-2 text-gray-700">
             <strong>Client number:</strong>
-            <a href="{% url 'clients:client-detail' order.client.client_number %}" class="text-indigo-500 hover:underline">{{ order.client.client_number }}</a>
+            <a href="{% url 'orders:client-orders' order.client.client_number %}" class="text-indigo-500 hover:underline">{{ order.client.client_number }}</a>
         </p>
         <p class="mt-2 text-gray-700"><strong>Date Created:</strong> {{ order.date_created }}</p>
         <p class="mt-2 text-gray-700"><strong>Status:</strong> <span class="text-indigo-500">{{ order.status }}</span></p>
@@ -63,14 +63,30 @@
             </table>
         </div>
 
-        {% if request.user.is_organisor %}
-        <form method="post" class="mt-6">
+
+        <form method="post" class="mt-6 flex space-x-4">
+            {% if request.user.is_organisor %}
             {% csrf_token %}
-            <button type="submit" name="mark_as_paid" class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600">
+            <!-- Mark as Paid Button -->
+            <button
+                type="submit"
+                name="mark_as_paid"
+                class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600"
+            >
                 Mark as Paid
             </button>
-        </form>
         {% endif %}
+            <!-- Cancel Order Button -->
+            <button
+                type="submit"
+                name="cancel_order"
+                class="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600"
+                onclick="return confirm('Are you sure you want to cancel this order?');"
+            >
+                Cancel Order
+            </button>
+        </form>
+
 
     </div>
 </div>

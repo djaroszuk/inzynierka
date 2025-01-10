@@ -69,7 +69,7 @@ function renderLifetimeValueChart(labels, ltvValues) {
                 x: {
                     title: {
                         display: true,
-                        text: "Time Period",
+                        text: "Month",
                     },
                 },
             },

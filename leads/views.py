@@ -322,10 +322,10 @@ class LeadUploadView(LoginRequiredMixin, View):
                 for idx, row in enumerate(
                     sheet.iter_rows(min_row=2, values_only=True), start=2
                 ):
-                    first_name, last_name, age, email = row[:4]
+                    first_name, last_name, age, email, phone_number = row[:5]
 
                     # Skip rows with empty required fields
-                    if not all([first_name, last_name, age, email]):
+                    if not all([first_name, last_name, age, email, phone_number]):
                         skipped_rows.append(idx)  # Add row number to skipped list
                         continue
 
@@ -340,6 +340,7 @@ class LeadUploadView(LoginRequiredMixin, View):
                         last_name=last_name,
                         age=int(age),
                         email=email,
+                        phone_number=phone_number,  # Add phone number
                         category=new_category,  # Assign the "new" category
                     )
                     created_leads += 1

@@ -153,8 +153,8 @@ class AgentStatsView(OrganisorAndLoginRequiredMixin, generic.DetailView):
         context["conversion_rate"] = conversion_rate
 
         # Daily and monthly data
-        daily_orders_data = agent.get_daily_order_data(days=7)
-        monthly_revenue_data = agent.get_monthly_revenue_data(months=6)
+        daily_orders_data = agent.get_daily_order_data(days=30)
+        monthly_revenue_data = agent.get_monthly_revenue_data(months=12)
 
         context["daily_orders_data_json"] = json.dumps(daily_orders_data)
         context["monthly_revenue_data_json"] = json.dumps(monthly_revenue_data)
@@ -199,13 +199,13 @@ class AllAgentsStatsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
             total_no_sales += stats["no_sale"]
 
             # Aggregate daily orders
-            daily_data = agent.get_daily_order_data(days=7)
+            daily_data = agent.get_daily_order_data(days=30)
             for entry in daily_data:
                 date = entry["date"]
                 daily_orders_map[date] = daily_orders_map.get(date, 0) + entry["count"]
 
             # Aggregate monthly revenue
-            monthly_data = agent.get_monthly_revenue_data(months=6)
+            monthly_data = agent.get_monthly_revenue_data(months=12)
             for entry in monthly_data:
                 month = entry["month"]
                 monthly_revenue_map[month] = (

@@ -7,16 +7,22 @@
 <section class="text-gray-600 body-font">
   <div class="container px-5 py-16 mx-auto">
     <div class="w-full mb-8 py-4 flex justify-between items-center border-b border-gray-300">
-      <div>
-        <h1 class="text-3xl font-semibold text-gray-900">Orders history</h1>
-        <p class="text-gray-600">Client Number: {{ client.client_number }}</p>
-      </div>
+      <h1 class="text-3xl font-semibold text-gray-900">
+        Orders for {{client.client_number}}
+      </h1>
       <div class="flex items-center space-x-4">
+        {% if request.user.is_organisor %}
+        <form method="get" action="" class="flex">
+          <button name="export" value="csv" type="submit" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+            Export Client Orders to CSV
+          </button>
+        </form>
+        {% endif %}
         <a href="{% url 'orders:order-create' %}?client_number={{ client.client_number }}" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
           Add Order
         </a>
         <form method="get" action="" class="flex items-center space-x-4">
-          <input type="text" name="q" placeholder="Search by order number" class="border border-gray-300 rounded px-4 py-2" value="{{ request.GET.q }}">
+          {{ search_form.q }}
           <button type="submit" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
             Search
           </button>
@@ -24,16 +30,21 @@
       </div>
     </div>
 
+    <!-- Orders Table -->
+    {% if orders %}
     <div class="grid gap-6">
       <div class="overflow-auto">
         <table class="table-auto w-full text-left whitespace-no-wrap">
           <thead>
             <tr>
               <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100 rounded-tl rounded-bl">
-                <a href="?sort=order_number&direction=asc" class="hover:underline">Order Number</a>
+                Order Number
               </th>
               <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">
-                <a href="?sort=date_created&direction=desc" class="hover:underline">Date Created</a>
+                Client
+              </th>
+              <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">
+                Date Created
               </th>
               <th class="px-4 py-3 title-font tracking-wider font-medium text-gray-900 text-sm bg-gray-100">
                 Total Price
@@ -51,8 +62,9 @@
                   {{ order.id }}
                 </a>
               </td>
+              <td class="px-4 py-3">{{ order.client }}</td>
               <td class="px-4 py-3">{{ order.date_created|date:"d-m-Y H:i" }}</td>
-              <td class="px-4 py-3 text-lg text-gray-900">{{ order.total_price }}</td>
+              <td class="px-4 py-3 text-lg text-gray-900">{{ order.total_price }}$</td>
               <td class="px-4 py-3">{{ order.status }}</td>
             </tr>
             {% endfor %}
@@ -61,17 +73,42 @@
       </div>
     </div>
 
-    <div class="mt-4">
-      <nav class="flex justify-between">
+    <!-- Pagination Section -->
+    <div class="mt-4 flex justify-center">
+      <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
         {% if orders.has_previous %}
-        <a href="?page={{ orders.previous_page_number }}" class="text-indigo-500 hover:underline">Previous</a>
+        <a href="?page=1"
+           class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+          First
+        </a>
+        <a href="?page={{ orders.previous_page_number }}"
+           class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+          Previous
+        </a>
         {% endif %}
-        <span>Page {{ orders.number }} of {{ orders.paginator.num_pages }}</span>
+
+        {% for page_num in orders.paginator.page_range %}
+        <a href="?page={{ page_num }}"
+           class="px-3 py-2 border border-gray-300 {% if page_num == orders.number %}bg-indigo-100 text-indigo-600{% else %}text-gray-700 bg-white hover:bg-gray-100{% endif %}">
+          {{ page_num }}
+        </a>
+        {% endfor %}
+
         {% if orders.has_next %}
-        <a href="?page={{ orders.next_page_number }}" class="text-indigo-500 hover:underline">Next</a>
+        <a href="?page={{ orders.next_page_number }}"
+           class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+          Next
+        </a>
+        <a href="?page={{ orders.paginator.num_pages }}"
+           class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+          Last
+        </a>
         {% endif %}
       </nav>
     </div>
+    {% else %}
+    <p class="text-gray-500">No orders found for this client.</p>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

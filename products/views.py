@@ -112,7 +112,7 @@ class ProductSalesDetailView(OrganisorAndLoginRequiredMixin, generic.ListView):
         return OrderProduct.get_product_sales()
 
     def get_context_data(self, **kwargs):
-        """Add chart data to the context."""
+        """Add chart data and pagination to the context."""
         context = super().get_context_data(**kwargs)
 
         # Handle the filter form
@@ -123,7 +123,15 @@ class ProductSalesDetailView(OrganisorAndLoginRequiredMixin, generic.ListView):
         product_sales = self.get_queryset()
         print(f"Product sales raw data: {product_sales}")
 
-        # Calculate total products sold and total revenue
+        # Pagination logic
+        paginator = Paginator(product_sales, 5)  # Show 10 products per page
+        page_number = self.request.GET.get("page")
+        page_obj = paginator.get_page(page_number)
+
+        context["product_sales"] = page_obj
+        context["page_obj"] = page_obj
+
+        # Chart data processing as before
         total_quantity = sum(item["total_quantity_sold"] for item in product_sales)
         total_revenue = sum(item["total_revenue_sold"] for item in product_sales)
         print(f"Total quantity sold: {total_quantity}")
@@ -134,14 +142,12 @@ class ProductSalesDetailView(OrganisorAndLoginRequiredMixin, generic.ListView):
             quantity_data = []
             revenue_data = []
         else:
-            # Sort by total quantity sold and take top 5
             sorted_sales = sorted(
                 product_sales, key=lambda x: x["total_quantity_sold"], reverse=True
             )
             top_sales = sorted_sales[:5]
             other_sales = sorted_sales[5:]
 
-            # Aggregate the "Other" category
             other_quantity = sum(item["total_quantity_sold"] for item in other_sales)
             other_revenue = sum(item["total_revenue_sold"] for item in other_sales)
 
@@ -158,7 +164,6 @@ class ProductSalesDetailView(OrganisorAndLoginRequiredMixin, generic.ListView):
             print(f"Quantities: {quantity_data}")
             print(f"Revenues: {revenue_data}")
 
-            # Convert data to percentages
             quantity_data = [
                 round((value / total_quantity) * 100, 2) for value in quantity_data
             ]
@@ -166,19 +171,12 @@ class ProductSalesDetailView(OrganisorAndLoginRequiredMixin, generic.ListView):
                 round((value / total_revenue) * 100, 2) for value in revenue_data
             ]
 
-        # **Convert Decimal to float**
         quantity_data = [float(x) for x in quantity_data]
         revenue_data = [float(x) for x in revenue_data]
 
-        # Pass raw data to the template; json_script will handle serialization
         context["chart_labels"] = labels
         context["chart_quantity_data"] = quantity_data
         context["chart_revenue_data"] = revenue_data
-
-        # Debug final chart data
-        print(f"Chart labels: {labels}")
-        print(f"Chart quantity data: {quantity_data}")
-        print(f"Chart revenue data: {revenue_data}")
 
         return context
 

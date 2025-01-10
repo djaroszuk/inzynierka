@@ -80,7 +80,15 @@ function renderMonthlyRevenueChart(labels, data, label) {
             responsive: true,
             plugins: {
                 legend: { position: 'top' },
-                title: { display: true, text: label }
+                title: { display: true, text: label },
+                tooltip: {
+                    callbacks: {
+                        label: function(tooltipItem) {
+                            // Add the `$` symbol to the value in the tooltip
+                            return `$${tooltipItem.raw.toLocaleString()}`;
+                        }
+                    }
+                }
             },
             scales: {
                 y: {

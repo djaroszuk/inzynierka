@@ -4,7 +4,7 @@ from django.urls import reverse_lazy
 from django.views import generic
 from django.shortcuts import get_object_or_404
 from .models import Client, Contact
-from .forms import ClientForm, ContactForm, ClientSearchForm
+from .forms import ClientForm, ContactForm, ClientSearchForm, OrganisorClientForm
 from django.db.models import Q
 from orders.forms import StatisticsFilterForm
 from datetime import timedelta
@@ -86,16 +86,20 @@ class ClientDetailView(LoginRequiredMixin, generic.DetailView):
 
 class ClientUpdateView(LoginRequiredMixin, generic.UpdateView):
     model = Client
-    form_class = ClientForm
+    form_class = None  # Dynamically set later
     template_name = "clients/client_update.html"
-    success_url = reverse_lazy(
-        "clients:client-list"
-    )  # Po aktualizacji przekierowuje do listy leadów
+    success_url = reverse_lazy("clients:client-list")
 
     def get_object(self):
         """Fetch the client using client_number instead of pk."""
         client_number = self.kwargs["client_number"]
         return get_object_or_404(Client, client_number=client_number)
+
+    def get_form_class(self):
+        """Return a form class dynamically based on the user role."""
+        if self.request.user.is_organisor:
+            return OrganisorClientForm
+        return ClientForm
 
 
 class ClientDeleteView(LoginRequiredMixin, UserPassesTestMixin, generic.DeleteView):
@@ -250,6 +254,8 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
         # Prepare cumulative LTV
         cumulative_revenue_by_period = {}
 
+        # Client statistics calculation
+        client_statistics = []
         for client in clients:
             # Gather overall statistics
             stats = client.order_statistics(
@@ -264,6 +270,15 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
             # Track clients who made orders
             if stats["total_orders"] > 0:
                 unique_clients_with_orders.add(client.pk)
+
+                # Collect client statistics for sorting
+                client_statistics.append(
+                    {
+                        "client": client,
+                        "total_revenue": stats["total_revenue"],
+                        "total_orders": stats["total_orders"],
+                    }
+                )
 
             # Append monthly data for charts
             monthly_order_stats.append(
@@ -283,6 +298,21 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
                 if label not in cumulative_revenue_by_period:
                     cumulative_revenue_by_period[label] = 0
                 cumulative_revenue_by_period[label] += value
+
+        # Identify top 3 clients
+        best_clients = sorted(
+            client_statistics, key=lambda x: x["total_revenue"], reverse=True
+        )[:3]
+
+        # Format best clients data for display
+        best_clients_data = [
+            {
+                "number": client_data["client"].client_number,
+                "total_revenue": client_data["total_revenue"],
+                "total_orders": client_data["total_orders"],
+            }
+            for client_data in best_clients
+        ]
 
         # Sort labels (time periods) for consistent chart display
         sorted_labels = sorted(cumulative_revenue_by_period.keys())
@@ -313,9 +343,8 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
         context["monthly_aov"] = consolidated_monthly_aov_json
         context["ltv_data"] = ltv_data_json
         context["baseline_value"] = baseline_value
-        context["total_clients"] = len(
-            unique_clients_with_orders
-        )  # Update with unique clients count
+        context["total_clients"] = len(unique_clients_with_orders)
+        context["best_clients"] = best_clients_data  # Add top clients data
 
         return context
 

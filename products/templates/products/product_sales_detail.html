@@ -32,9 +32,8 @@
             </form>
             {% endif %}
 
-            <!-- Product Sales Overview -->
             <div class="bg-gray-50 shadow rounded-lg p-6 mb-10">
-                <h2 class="text-xl font-bold text-gray-700 mb-4">Product Sales Overview</h2>
+                <h2 class="text-xl font-bold text-gray-700 mb-4">Products statistics</h2>
                 <div class="overflow-auto">
                     <table class="table-auto w-full text-left whitespace-no-wrap">
                         <thead>
@@ -58,6 +57,41 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Pagination Section -->
+            <div class="mt-4 flex justify-center">
+                <nav class="inline-flex rounded-md shadow-sm" aria-label="Pagination">
+                {% if product_sales.has_previous %}
+                <a href="?page=1"
+                    class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                    First
+                </a>
+                <a href="?page={{ product_sales.previous_page_number }}"
+                    class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                    Previous
+                </a>
+                {% endif %}
+
+                {% for page_num in product_sales.paginator.page_range %}
+                <a href="?page={{ page_num }}"
+                    class="px-3 py-2 border border-gray-300 {% if page_num == product_sales.number %}bg-indigo-100 text-indigo-600{% else %}text-gray-700 bg-white hover:bg-gray-100{% endif %}">
+                    {{ page_num }}
+                </a>
+                {% endfor %}
+
+                {% if product_sales.has_next %}
+                <a href="?page={{ product_sales.next_page_number }}"
+                    class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                    Next
+                </a>
+                <a href="?page={{ product_sales.paginator.num_pages }}"
+                    class="px-3 py-2 border border-gray-300 text-gray-700 bg-white hover:bg-gray-100">
+                    Last
+                </a>
+                {% endif %}
+                </nav>
+            </div>
+
 
             <!-- Pie Charts Section -->
             <div class="bg-white shadow rounded-lg p-6">

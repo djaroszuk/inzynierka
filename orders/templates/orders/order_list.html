@@ -13,6 +13,11 @@
             Delete Pending Orders
           </button>
         </form>
+        <form method="get" action="" class="flex">
+          <button name="export" value="csv" type="submit" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600">
+            Export Orders to CSV
+          </button>
+        </form>
         {% endif %}
         <form method="get" action="" class="flex items-center space-x-4">
           {{ search_form.q }}

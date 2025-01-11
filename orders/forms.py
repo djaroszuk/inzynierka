@@ -1,6 +1,7 @@
 from django import forms
 
 
+# Form for timeframe filter
 class StatisticsFilterForm(forms.Form):
     start_datetime = forms.DateTimeField(
         required=False,
@@ -25,9 +26,9 @@ class StatisticsFilterForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super(StatisticsFilterForm, self).__init__(*args, **kwargs)
-        # Removed logic for setting initial values
 
 
+# Form for searching orders
 class OrderSearchForm(forms.Form):
     q = forms.CharField(
         label="Search by Order Number",

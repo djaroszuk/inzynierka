@@ -3,6 +3,7 @@ from clients.models import Client
 from datetime import datetime
 
 
+# Model representing a product in the system
 class Product(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
@@ -11,9 +12,10 @@ class Product(models.Model):
     clients = models.ManyToManyField(Client, related_name="products", blank=True)
 
     def save(self, *args, **kwargs):
-        if self.pk:  # If the product already exists
+        if self.pk:
             old_product = Product.objects.get(pk=self.pk)
             if old_product.price != self.price:  # Check if the price has changed
+                # Record the price change in the PriceHistory model
                 PriceHistory.objects.create(
                     product=self,
                     old_price=old_product.price,
@@ -26,6 +28,7 @@ class Product(models.Model):
         return self.name
 
 
+# Model to track price changes for products
 class PriceHistory(models.Model):
     product = models.ForeignKey(
         Product, related_name="price_history", on_delete=models.CASCADE

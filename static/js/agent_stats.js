@@ -1,33 +1,35 @@
+// Wait for the DOM to load completely before executing the script
 document.addEventListener('DOMContentLoaded', () => {
-    // Retrieve data embedded in the DOM
+    // Retrieve the DOM element containing the preprocessed chart data
     const chartDataElement = document.getElementById('chart-data');
 
+    // Ensure the necessary data element exists; otherwise, log an error and stop execution
     if (!chartDataElement) {
         console.error("Chart data element not found.");
         return;
     }
 
-    // Parse preprocessed data for charts
+    // Parse chart data for daily orders and monthly revenue, with fallbacks to empty arrays
     const dailyOrdersData = JSON.parse(chartDataElement.dataset.dailyOrders || '[]');
     const monthlyRevenueData = JSON.parse(chartDataElement.dataset.monthlyRevenue || '[]');
 
-    // Determine whether we're working with single agent or all agents data
+    // Check whether the data pertains to a single agent or aggregated across all agents
     const isSingleAgent = chartDataElement.dataset.isSingleAgent === "true";
 
-    // Prepare daily orders data
+    // Prepare data for the daily orders chart
     const dailyOrdersLabels = dailyOrdersData.map(item => item.date);
-    const dailyOrdersValues = dailyOrdersData.map(item => isSingleAgent ? item.count : item.average_count); // Use count for single agent, average_count for all agents
+    const dailyOrdersValues = dailyOrdersData.map(item => isSingleAgent ? item.count : item.average_count); // Adjust data based on context
     const dailyOrdersLabel = isSingleAgent ? 'Daily Orders (Single Agent)' : 'Average Daily Orders (All Agents)';
     renderDailyOrdersChart(dailyOrdersLabels, dailyOrdersValues, dailyOrdersLabel);
 
-    // Prepare monthly revenue data
+    // Prepare data for the monthly revenue chart
     const monthlyRevenueLabels = monthlyRevenueData.map(item => item.month);
-    const monthlyRevenueValues = monthlyRevenueData.map(item => isSingleAgent ? item.revenue : item.average_revenue); // Use revenue for single agent, average_revenue for all agents
+    const monthlyRevenueValues = monthlyRevenueData.map(item => isSingleAgent ? item.revenue : item.average_revenue); // Adjust data based on context
     const monthlyRevenueLabel = isSingleAgent ? 'Monthly Revenue (Single Agent)' : 'Average Monthly Revenue (All Agents)';
     renderMonthlyRevenueChart(monthlyRevenueLabels, monthlyRevenueValues, monthlyRevenueLabel);
 });
 
-// Daily Orders Chart
+// Render the daily orders chart using Chart.js
 function renderDailyOrdersChart(labels, data, label) {
     const ctxDaily = document.getElementById('dailyOrdersChart').getContext('2d');
     new Chart(ctxDaily, {
@@ -37,8 +39,8 @@ function renderDailyOrdersChart(labels, data, label) {
             datasets: [{
                 label: label,
                 data: data,
-                borderColor: 'rgba(54,162,235,1)',
-                backgroundColor: 'rgba(54,162,235,0.2)',
+                borderColor: 'rgba(54,162,235,1)', // Line color
+                backgroundColor: 'rgba(54,162,235,0.2)', // Background fill color
                 borderWidth: 2,
                 fill: true,
                 pointRadius: 5,
@@ -48,17 +50,17 @@ function renderDailyOrdersChart(labels, data, label) {
         options: {
             responsive: true,
             plugins: {
-                legend: { position: 'top' },
-                title: { display: true, text: label }
+                legend: { position: 'top' }, // Position the legend
+                title: { display: true, text: label } // Chart title
             },
             scales: {
-                y: { beginAtZero: true }
+                y: { beginAtZero: true } // Ensure Y-axis starts at zero
             }
         }
     });
 }
 
-// Monthly Revenue Chart
+// Render the monthly revenue chart using Chart.js
 function renderMonthlyRevenueChart(labels, data, label) {
     const ctxMonthly = document.getElementById('monthlyRevenueChart').getContext('2d');
     new Chart(ctxMonthly, {
@@ -68,8 +70,8 @@ function renderMonthlyRevenueChart(labels, data, label) {
             datasets: [{
                 label: label,
                 data: data,
-                borderColor: 'rgba(75,192,192,1)',
-                backgroundColor: 'rgba(75,192,192,0.2)',
+                borderColor: 'rgba(75,192,192,1)', // Line color
+                backgroundColor: 'rgba(75,192,192,0.2)', // Background fill color
                 borderWidth: 2,
                 fill: true,
                 pointRadius: 5,
@@ -79,12 +81,12 @@ function renderMonthlyRevenueChart(labels, data, label) {
         options: {
             responsive: true,
             plugins: {
-                legend: { position: 'top' },
-                title: { display: true, text: label },
+                legend: { position: 'top' }, // Position the legend
+                title: { display: true, text: label }, // Chart title
                 tooltip: {
                     callbacks: {
+                        // Format tooltip values as currency
                         label: function(tooltipItem) {
-                            // Add the `$` symbol to the value in the tooltip
                             return `$${tooltipItem.raw.toLocaleString()}`;
                         }
                     }
@@ -92,8 +94,9 @@ function renderMonthlyRevenueChart(labels, data, label) {
             },
             scales: {
                 y: {
-                    beginAtZero: true,
+                    beginAtZero: true, // Ensure Y-axis starts at zero
                     ticks: {
+                        // Format Y-axis tick values as currency
                         callback: function(value) {
                             return '$' + value.toLocaleString();
                         }

@@ -1,43 +1,46 @@
-# clients/views.py
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.urls import reverse_lazy
-from django.views import generic
-from django.shortcuts import get_object_or_404
-from .models import Client, Contact
-from .forms import ClientForm, ContactForm, ClientSearchForm, OrganisorClientForm
-from django.db.models import Q
-from orders.forms import StatisticsFilterForm
+# Standard Library Imports
 from datetime import timedelta
-from django.utils import timezone
 import json
-from django.core.serializers.json import DjangoJSONEncoder
-from agents.mixins import OrganisorAndLoginRequiredMixin
+
+# Django Core Imports
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views import generic
+
+# Custom Mixins
+from agents.mixins import OrganisorAndLoginRequiredMixin
+
+# Forms
+from orders.forms import StatisticsFilterForm
+from .forms import ClientForm, ClientSearchForm, ContactForm, OrganisorClientForm
+
+# Models
+from .models import Client, Contact
 
 
+# Displays a list of clients with search and filter functionality
 class ClientListView(LoginRequiredMixin, generic.ListView):
     model = Client
     template_name = "clients/client_list.html"
     context_object_name = "clients"
-    paginate_by = 10  # Number of items per page
+    paginate_by = 10
 
     def get_queryset(self):
-        """Return a list of clients filtered by the search query."""
+        # Returns a list of clients filtered by search and criteria
         queryset = Client.objects.all()
 
         query = self.request.GET.get("q")
         if query:
-            queryset = queryset.filter(
-                Q(client_number__icontains=query)  # Case-insensitive search
-            )
+            queryset = queryset.filter(Q(client_number__icontains=query))
 
-        # Filter by Important Clients (checkbox)
         if self.request.GET.get("important"):
-            queryset = queryset.filter(
-                status="Important"
-            )  # Assuming `status` is used to mark clients as important
+            queryset = queryset.filter(status="Important")
 
-        # Filter by Last Sales Offer Contact (days ago)
         last_contacted_days = self.request.GET.get("last_contacted")
         if last_contacted_days:
             try:
@@ -48,13 +51,12 @@ class ClientListView(LoginRequiredMixin, generic.ListView):
                     contacts__contact_date__lte=cutoff_date,
                 ).distinct()
             except ValueError:
-                # If the value is not a valid integer, just ignore the filter
                 pass
 
         return queryset.order_by("-converted_date")
 
     def get_context_data(self, **kwargs):
-        """Add the search form and pagination to the context."""
+        # Adds the search form and pagination to the context
         context = super().get_context_data(**kwargs)
         queryset = self.get_queryset()
 
@@ -69,87 +71,92 @@ class ClientListView(LoginRequiredMixin, generic.ListView):
             clients = paginator.page(paginator.num_pages)
 
         context["clients"] = clients
-        context["form"] = ClientSearchForm(self.request.GET)  # Pre-fill with query data
+        context["form"] = ClientSearchForm(self.request.GET)
         return context
 
 
+# Displays detailed information about a specific client
 class ClientDetailView(LoginRequiredMixin, generic.DetailView):
     model = Client
     template_name = "clients/client_detail.html"
     context_object_name = "client"
 
     def get_object(self):
-        """Fetch the client using client_number instead of pk."""
+        # Fetches the client using client_number
         client_number = self.kwargs["client_number"]
         return get_object_or_404(Client, client_number=client_number)
 
 
+# Allows updating of client details with role-based forms
 class ClientUpdateView(LoginRequiredMixin, generic.UpdateView):
     model = Client
-    form_class = None  # Dynamically set later
+    form_class = None
     template_name = "clients/client_update.html"
     success_url = reverse_lazy("clients:client-list")
 
     def get_object(self):
-        """Fetch the client using client_number instead of pk."""
+        # Fetches the client using client_number
         client_number = self.kwargs["client_number"]
         return get_object_or_404(Client, client_number=client_number)
 
     def get_form_class(self):
-        """Return a form class dynamically based on the user role."""
+        # Returns a form class dynamically based on user role
         if self.request.user.is_organisor:
             return OrganisorClientForm
         return ClientForm
 
 
+# Handles client deletion with permission checks
 class ClientDeleteView(LoginRequiredMixin, UserPassesTestMixin, generic.DeleteView):
     model = Client
     template_name = "clients/client_delete.html"
     success_url = reverse_lazy("clients:client-list")
 
     def test_func(self):
-        """Sprawdza, czy użytkownik jest organizatorem."""
+        # Checks if the user is an organisor
         return self.request.user.is_organisor
 
     def get_object(self):
-        """Fetch the client using client_number instead of pk."""
+        # Fetches the client using client_number
         client_number = self.kwargs["client_number"]
         return get_object_or_404(Client, client_number=client_number)
 
 
+# Displays a list of contacts for a specific client
 class ContactListView(LoginRequiredMixin, generic.ListView):
     model = Contact
     template_name = "clients/contact_list.html"
     context_object_name = "contacts"
 
     def get_queryset(self):
-        """Filter contacts for a specific client using client_number."""
+        # Filters contacts for a specific client
         client_number = self.kwargs.get("client_number")
         client = get_object_or_404(Client, client_number=client_number)
         return Contact.objects.filter(client=client).order_by("-contact_date")
 
     def get_context_data(self, **kwargs):
-        """Add the client to the context using client_number."""
+        # Adds the client to the context
         context = super().get_context_data(**kwargs)
         client_number = self.kwargs.get("client_number")
         context["client"] = get_object_or_404(Client, client_number=client_number)
         return context
 
 
+# Allows creation of a new contact for a specific client
 class ContactCreateView(LoginRequiredMixin, generic.CreateView):
     model = Contact
     template_name = "clients/contact_form.html"
     form_class = ContactForm
 
     def get_context_data(self, **kwargs):
-        """Add the client to the context using client_number."""
+        # Adds the client to the context
         context = super().get_context_data(**kwargs)
         client_number = self.kwargs.get("client_number")
         context["client"] = get_object_or_404(Client, client_number=client_number)
         return context
 
     def form_valid(self, form):
-        """Assign the client and the logged-in user before saving."""
+        # Assigns the client and logged-in user before saving
         client_number = self.kwargs.get("client_number")
         client = get_object_or_404(Client, client_number=client_number)
         form.instance.client = client
@@ -158,89 +165,78 @@ class ContactCreateView(LoginRequiredMixin, generic.CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        """Redirect to the contact list after creating a contact."""
+        # Redirects to the contact list after creating a contact
         client_number = self.kwargs.get("client_number")
         return reverse_lazy(
             "clients:contact-list", kwargs={"client_number": client_number}
         )
 
 
+# Displays statistics for a specific client
 class ClientStatisticsView(LoginRequiredMixin, generic.TemplateView):
     template_name = "clients/client_statistics.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Initialize the filter form with GET data if available
         form = StatisticsFilterForm(self.request.GET or None)
         context["form"] = form
 
-        # Extract filtering variables
         start_datetime = None
         end_datetime = None
 
         if form.is_valid():
-            # Retrieve validated data from the form
             start_datetime = form.cleaned_data.get("start_datetime")
             end_datetime = form.cleaned_data.get("end_datetime")
 
-        # Fetch the client based on the client_number from the URL
         client_number = self.kwargs.get("client_number")
         client = get_object_or_404(Client, client_number=client_number)
 
-        # Fetch client statistics
         client_statistics = client.order_statistics(
             start_date=start_datetime, end_date=end_datetime
         )
 
-        # Fetch monthly order stats using the model method
         monthly_order_stats = client.monthly_order_stats(
             start_date=start_datetime, end_date=end_datetime
         )
 
-        # Fetch monthly average order value using the new model method
         monthly_aov = client.monthly_average_order_value(
             start_date=start_datetime, end_date=end_datetime
         )
 
-        # Convert the data to JSON using DjangoJSONEncoder
         monthly_order_stats_json = json.dumps(
             monthly_order_stats, cls=DjangoJSONEncoder
         )
         monthly_aov_json = json.dumps(monthly_aov, cls=DjangoJSONEncoder)
 
-        # Add to context
         context["client"] = client
         context["client_statistics"] = client_statistics
         context["monthly_order_stats"] = monthly_order_stats_json
-        context["monthly_aov"] = monthly_aov_json  # New context variable
+        context["monthly_aov"] = monthly_aov_json
 
         return context
 
 
+# Displays aggregate statistics for all clients
 class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
     template_name = "clients/all_clients_statistics.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Initialize the filter form with GET data if available
         form = StatisticsFilterForm(self.request.GET or None)
         context["form"] = form
 
-        # Extract filtering variables
         start_datetime = None
         end_datetime = None
 
         if form.is_valid():
-            # Retrieve validated data from the form
             start_datetime = form.cleaned_data.get("start_datetime")
             end_datetime = form.cleaned_data.get("end_datetime")
 
-        # Fetch all clients
         clients = Client.objects.all()
         total_clients = clients.count()
-        baseline_value = 500  # Baseline for LTV
+        baseline_value = 500
         all_clients_statistics = {
             "total_revenue": 0,
             "total_products_sold": 0,
@@ -251,13 +247,10 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
         ltv_data = {"labels": [], "ltv_values": []}
         unique_clients_with_orders = set()
 
-        # Prepare cumulative LTV
         cumulative_revenue_by_period = {}
 
-        # Client statistics calculation
         client_statistics = []
         for client in clients:
-            # Gather overall statistics
             stats = client.order_statistics(
                 start_date=start_datetime, end_date=end_datetime
             )
@@ -267,11 +260,9 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
             ]
             all_clients_statistics["total_orders"] += stats["total_orders"]
 
-            # Track clients who made orders
             if stats["total_orders"] > 0:
                 unique_clients_with_orders.add(client.pk)
 
-                # Collect client statistics for sorting
                 client_statistics.append(
                     {
                         "client": client,
@@ -280,7 +271,6 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
                     }
                 )
 
-            # Append monthly data for charts
             monthly_order_stats.append(
                 client.monthly_order_stats(
                     start_date=start_datetime, end_date=end_datetime
@@ -292,19 +282,16 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
                 )
             )
 
-            # Fetch cumulative LTV for the client
             client_ltv = client.lifetime_value_over_time()
             for label, value in zip(client_ltv["labels"], client_ltv["ltv_values"]):
                 if label not in cumulative_revenue_by_period:
                     cumulative_revenue_by_period[label] = 0
                 cumulative_revenue_by_period[label] += value
 
-        # Identify top 3 clients
         best_clients = sorted(
             client_statistics, key=lambda x: x["total_revenue"], reverse=True
         )[:3]
 
-        # Format best clients data for display
         best_clients_data = [
             {
                 "number": client_data["client"].client_number,
@@ -314,21 +301,17 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
             for client_data in best_clients
         ]
 
-        # Sort labels (time periods) for consistent chart display
         sorted_labels = sorted(cumulative_revenue_by_period.keys())
 
-        # Calculate average LTV across all clients
         for label in sorted_labels:
             total_revenue = cumulative_revenue_by_period[label]
             avg_ltv = total_revenue / total_clients if total_clients > 0 else 0
             ltv_data["labels"].append(label)
             ltv_data["ltv_values"].append(round(avg_ltv, 2))
 
-        # Consolidate monthly data for all clients
         consolidated_monthly_stats = self.consolidate_monthly_data(monthly_order_stats)
         consolidated_monthly_aov = self.consolidate_monthly_aov(monthly_aov)
 
-        # Convert data to JSON using DjangoJSONEncoder
         consolidated_monthly_stats_json = json.dumps(
             consolidated_monthly_stats, cls=DjangoJSONEncoder
         )
@@ -337,21 +320,18 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
         )
         ltv_data_json = json.dumps(ltv_data, cls=DjangoJSONEncoder)
 
-        # Add data to context
         context["all_clients_statistics"] = all_clients_statistics
         context["monthly_order_stats"] = consolidated_monthly_stats_json
         context["monthly_aov"] = consolidated_monthly_aov_json
         context["ltv_data"] = ltv_data_json
         context["baseline_value"] = baseline_value
         context["total_clients"] = len(unique_clients_with_orders)
-        context["best_clients"] = best_clients_data  # Add top clients data
+        context["best_clients"] = best_clients_data
 
         return context
 
     def consolidate_monthly_data(self, monthly_order_stats):
-        """
-        Consolidates monthly order stats for all clients.
-        """
+        # Consolidates monthly order stats for all clients
         consolidated = {}
         for stats in monthly_order_stats:
             for label, orders, spent in zip(
@@ -362,7 +342,6 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
                 consolidated[label]["order_counts"] += orders
                 consolidated[label]["total_spent"] += spent
 
-        # Convert to sorted list for chart.js
         labels = sorted(consolidated.keys())
         return {
             "labels": labels,
@@ -371,9 +350,7 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
         }
 
     def consolidate_monthly_aov(self, monthly_aov):
-        """
-        Consolidates monthly Average Order Value (AOV) for all clients.
-        """
+        # Consolidates monthly Average Order Value (AOV) for all clients
         consolidated = {}
         for stats in monthly_aov:
             for label, aov in zip(stats["labels"], stats["average_order_value"]):
@@ -382,7 +359,6 @@ class AllClientsStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateV
                 consolidated[label]["total_aov"] += aov
                 consolidated[label]["count"] += 1
 
-        # Calculate average AOV per month
         labels = sorted(consolidated.keys())
         return {
             "labels": labels,

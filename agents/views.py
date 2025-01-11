@@ -1,63 +1,65 @@
-from django.core.mail import send_mail
-from django.views import generic
-from django.contrib import messages
-import random
-from django.shortcuts import reverse
-from leads.models import Agent
-from .forms import AgentModelForm, EmailForm, AgentSearchForm
-from .mixins import OrganisorAndLoginRequiredMixin
-from django.contrib.auth.mixins import LoginRequiredMixin
-import json
-from django.urls import reverse_lazy
-from clients.models import Client, Contact
-from django.utils.timezone import now
-from django.shortcuts import get_object_or_404
-
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-
-from orders.forms import StatisticsFilterForm
+# Standard Library Imports
 from decimal import Decimal
+import json
+import random
+
+# Django Core Imports
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.mail import send_mail
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.shortcuts import reverse, get_object_or_404
+from django.urls import reverse_lazy
+from django.utils.timezone import now
+from django.views import generic
+from django.conf import settings
 
 
+# Models
+from leads.models import Agent
+from clients.models import Client, Contact
+
+# Forms
+from orders.forms import StatisticsFilterForm
+from .forms import AgentModelForm, EmailForm, AgentSearchForm
+
+# Custom Mixins
+from .mixins import OrganisorAndLoginRequiredMixin
+
+
+# Agent list with filters and search functionality
 class AgentListView(OrganisorAndLoginRequiredMixin, generic.ListView):
     template_name = "agents/agent_list.html"
     context_object_name = "agents"
-    paginate_by = 15  # Set pagination to 10 agents per page
+    paginate_by = 15
 
     def get_queryset(self):
-        """Return a list of agents filtered by the search query."""
         queryset = Agent.objects.all()
-
-        # Filter by username
         query = self.request.GET.get("q")
         if query:
             queryset = queryset.filter(
                 user__username__icontains=query
             )  # Case-insensitive search
-
-        return queryset.order_by("user__username")  # Ensure consistent ordering
+        return queryset.order_by("user__username")
 
     def get_context_data(self, **kwargs):
-        """Add the search form and pagination to the context."""
         context = super().get_context_data(**kwargs)
-
         # Get paginated queryset
         agents = self.get_queryset()
         paginator = Paginator(agents, self.paginate_by)
         page = self.request.GET.get("page", 1)
-
         try:
             paginated_agents = paginator.page(page)
         except PageNotAnInteger:
             paginated_agents = paginator.page(1)
         except EmptyPage:
             paginated_agents = paginator.page(paginator.num_pages)
-
         context["agents"] = paginated_agents  # Add paginated agents to context
         context["form"] = AgentSearchForm(self.request.GET)  # Pre-fill with query data
         return context
 
 
+# Create a new agent and send them login details
 class AgentCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
     template_name = "agents/agent_create.html"
     form_class = AgentModelForm
@@ -73,14 +75,15 @@ class AgentCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
         user.save()
         Agent.objects.create(user=user)
         send_mail(
-            subject="TODO.",
-            message="TODO.",
-            from_email="admin@test.com",
+            subject="Account Created in Dominik Jaroszuk CRM",
+            message="Your account has been created. Thanks for joining our company!",
+            from_email=settings.EMAIL_HOST_USER,
             recipient_list=[user.email],
         )
-        return super(AgentCreateView, self).form_valid(form)
+        return super().form_valid(form)
 
 
+# Display details of a specific agent
 class AgentDetailView(OrganisorAndLoginRequiredMixin, generic.DetailView):
     template_name = "agents/agent_detail.html"
     context_object_name = "agent"
@@ -89,6 +92,7 @@ class AgentDetailView(OrganisorAndLoginRequiredMixin, generic.DetailView):
         return Agent.objects.all()
 
 
+# Update an agent's details
 class AgentUpdateView(OrganisorAndLoginRequiredMixin, generic.UpdateView):
     template_name = "agents/agent_update.html"
     form_class = AgentModelForm
@@ -97,19 +101,16 @@ class AgentUpdateView(OrganisorAndLoginRequiredMixin, generic.UpdateView):
         return reverse("agents:agent-list")
 
     def get_queryset(self):
-        # Query the Agent model for the specific agent
-        return Agent.objects.select_related(
-            "user"
-        )  # Use select_related for efficiency with related `user` data
+        return Agent.objects.select_related("user")
 
     def get_form_kwargs(self):
-        # Pass the `instance` of the associated User to the form
         kwargs = super().get_form_kwargs()
         agent = self.get_object()
-        kwargs["instance"] = agent.user  # Ensures the form updates the User model
+        kwargs["instance"] = agent.user
         return kwargs
 
 
+# Delete an agent
 class AgentDeleteView(OrganisorAndLoginRequiredMixin, generic.DeleteView):
     template_name = "agents/agent_delete.html"
     context_object_name = "agent"
@@ -121,6 +122,7 @@ class AgentDeleteView(OrganisorAndLoginRequiredMixin, generic.DeleteView):
         return reverse("agents:agent-list")
 
 
+# Display detailed statistics for an agent
 class AgentStatsView(OrganisorAndLoginRequiredMixin, generic.DetailView):
     model = Agent
     template_name = "agents/agent_stats.html"
@@ -162,6 +164,7 @@ class AgentStatsView(OrganisorAndLoginRequiredMixin, generic.DetailView):
         return context
 
 
+# Display aggregated statistics for all agents
 class AllAgentsStatsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
     template_name = "agents/all_agents_stats.html"
 
@@ -238,7 +241,7 @@ class AllAgentsStatsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
             ),
             "sale": total_sales,
             "no_sale": total_no_sales,
-            "conversion_rate": overall_conversion_rate,  # Use the overall conversion rate here
+            "conversion_rate": overall_conversion_rate,
         }
 
         context["daily_orders_data_json"] = json.dumps(average_daily_orders)
@@ -247,26 +250,22 @@ class AllAgentsStatsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
         return context
 
 
+# Send an email to a specific client or all clients
 class SendEmailView(LoginRequiredMixin, generic.FormView):
     template_name = "agents/send_email.html"
     form_class = EmailForm
     success_url = reverse_lazy("agents:send-email")
 
     def get_initial(self):
-        """
-        Pre-fill the form with initial data if 'client_number' is provided in the query params.
-        """
+        # Prefill with client data if passed
         initial = super().get_initial()
         client_number = self.request.GET.get("client_number")
         if client_number:
-            print(f"[DEBUG] Prefilling form with client_number: {client_number}")
             initial["client_number"] = client_number
         return initial
 
     def get_context_data(self, **kwargs):
-        """
-        Add additional context data for the template.
-        """
+
         context = super().get_context_data(**kwargs)
         context["is_organisor"] = self.request.user.is_organisor
 
@@ -280,35 +279,24 @@ class SendEmailView(LoginRequiredMixin, generic.FormView):
         return context
 
     def form_valid(self, form):
-        """
-        Handle valid form submission for sending emails.
-        """
-        print("[DEBUG] form_valid called.")  # Debug to confirm method execution
+        # Sending emails form validation
 
         send_to_all = form.cleaned_data.get("send_to_all", False)
         client_number = form.cleaned_data.get("client_number")
-
-        print(f"[DEBUG] send_to_all: {send_to_all}, client_number: {client_number}")
 
         subject = form.cleaned_data["subject"]
         message = form.cleaned_data["message"]
 
         if send_to_all:
             if self.request.user.is_organisor:
-                print("[DEBUG] User is an organizer and selected 'Send to All'.")
                 # Retrieve all clients
                 clients = Client.objects.all()
-                print(
-                    f"[DEBUG] Retrieved clients: {[client.email for client in clients]}"
-                )
 
                 if not clients:
-                    print("[WARNING] No clients found.")
                     form.add_error(None, "No clients available to send emails.")
                     return self.form_invalid(form)
 
                 recipient_list = [client.email for client in clients if client.email]
-                print(f"[DEBUG] Recipient list: {recipient_list}")
 
                 if recipient_list:
                     send_mail(
@@ -321,7 +309,6 @@ class SendEmailView(LoginRequiredMixin, generic.FormView):
                         self.request,
                         f"Email sent successfully to {len(recipient_list)} clients.",
                     )
-                    print("[INFO] Emails sent to all clients successfully.")
 
                     # Create contact entries for all clients
                     for client in clients:
@@ -333,7 +320,6 @@ class SendEmailView(LoginRequiredMixin, generic.FormView):
                             user=self.request.user.userprofile,
                         )
                 else:
-                    print("[WARNING] Recipient list is empty. No emails sent.")
                     form.add_error(None, "No valid client emails available.")
                     messages.error(
                         self.request,
@@ -341,15 +327,12 @@ class SendEmailView(LoginRequiredMixin, generic.FormView):
                     )
                     return self.form_invalid(form)
             else:
-                print("[WARNING] Non-organizer user tried to send to all clients.")
                 form.add_error(
                     None, "You do not have permission to send emails to all clients."
                 )
                 return self.form_invalid(form)
         else:
-            print("[DEBUG] Sending to a specific client.")
             if not client_number:
-                print("[WARNING] Client number not provided.")
                 form.add_error(
                     "client_number", "Client Number is required to send an email."
                 )
@@ -360,10 +343,9 @@ class SendEmailView(LoginRequiredMixin, generic.FormView):
             send_mail(
                 subject,
                 message,
-                self.request.user.email,  # From email
+                settings.EMAIL_HOST_USER,  # From email
                 [client.email],  # To email
             )
-            print(f"[INFO] Email sent to {client.email} successfully.")
             messages.success(
                 self.request, f"Email sent successfully to {client.email}."
             )

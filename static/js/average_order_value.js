@@ -1,9 +1,8 @@
-// static/js/average_order_value.js
-
 document.addEventListener("DOMContentLoaded", () => {
-    // Retrieve the embedded JSON data using the <script> tag
+    // Retrieve the embedded JSON data from the DOM element
     const aovDataElement = document.getElementById("averageOrderValueData");
 
+    // Check if the required data element exists; log an error and exit if not
     if (!aovDataElement) {
         console.error("Average Order Value data not found in the template.");
         return;
@@ -11,17 +10,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let aovData;
     try {
+        // Parse the JSON data; handle any potential parsing errors
         aovData = JSON.parse(aovDataElement.textContent);
     } catch (error) {
         console.error("Failed to parse Average Order Value data:", error);
         return;
     }
 
+    // Ensure there is valid data to render the chart
     if (!aovData || !aovData.labels.length) {
         console.log("No Average Order Value data available for the chart.");
         return;
     }
 
+    // Render the chart with the provided labels and values
     renderAverageOrderValueChart(aovData.labels, aovData.average_order_value);
 });
 
@@ -29,35 +31,36 @@ function renderAverageOrderValueChart(labels, averageOrderValues) {
     const ctx = document.getElementById("averageOrderValueChart").getContext("2d");
 
     new Chart(ctx, {
-        type: "line", // Line chart for AOV
+        type: "line", // Use a line chart to visualize Average Order Value
         data: {
-            labels: labels,
+            labels: labels, // X-axis labels (e.g., months)
             datasets: [
                 {
-                    label: "Average Order Value ($)",
-                    data: averageOrderValues,
-                    borderColor: "rgba(255, 99, 132, 1)", // Red
-                    backgroundColor: "rgba(255, 99, 132, 0.2)", // Light Red
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.1, // Smooth curves
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
+                    label: "Average Order Value ($)", // Chart dataset label
+                    data: averageOrderValues, // Y-axis data points
+                    borderColor: "rgba(255, 99, 132, 1)", // Line color
+                    backgroundColor: "rgba(255, 99, 132, 0.2)", // Area fill color
+                    borderWidth: 2, // Line thickness
+                    fill: true, // Enable background fill under the line
+                    tension: 0.1, // Smooth the line curves
+                    pointRadius: 5, // Size of data points
+                    pointHoverRadius: 7, // Size of data points when hovered
                 }
             ]
         },
         options: {
-            responsive: true,
+            responsive: true, // Adjust chart dimensions based on container size
             plugins: {
                 legend: {
-                    position: "top",
+                    position: "top", // Position the legend at the top
                 },
                 title: {
                     display: true,
-                    text: "Monthly Average Order Value (AOV)",
+                    text: "Monthly Average Order Value (AOV)", // Chart title
                 },
                 tooltip: {
                     callbacks: {
+                        // Format tooltip values as currency
                         label: function (tooltipItem) {
                             return `$${tooltipItem.raw}`;
                         }
@@ -66,22 +69,22 @@ function renderAverageOrderValueChart(labels, averageOrderValues) {
             },
             scales: {
                 y: {
-                    beginAtZero: true,
+                    beginAtZero: true, // Start Y-axis at zero
                     ticks: {
-                        // Include a dollar sign in the ticks
+                        // Add a dollar sign to Y-axis tick values
                         callback: function(value) {
                             return `$${value}`;
                         }
                     },
                     title: {
                         display: true,
-                        text: 'AOV ($)',
+                        text: 'AOV ($)', // Y-axis label
                     },
                 },
                 x: {
                     title: {
                         display: true,
-                        text: 'Month',
+                        text: 'Month', // X-axis label
                     },
                 }
             },

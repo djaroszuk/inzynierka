@@ -25,7 +25,6 @@ class ClientAdmin(admin.ModelAdmin):
     ordering = ("-converted_date",)
     readonly_fields = ("client_number",)
 
-    # Optional: Add methods for custom display fields if needed
     def total_revenue(self, obj):
         return obj.total_revenue()
 

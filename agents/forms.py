@@ -1,11 +1,13 @@
 from django import forms
 from django.contrib.auth import get_user_model
+
 from clients.models import Client
 
 
 User = get_user_model()
 
 
+# Form for creating or updating Agent information
 class AgentModelForm(forms.ModelForm):
     class Meta:
         model = User
@@ -17,6 +19,7 @@ class AgentModelForm(forms.ModelForm):
         )
 
 
+# Form for creating and sending emails
 class EmailForm(forms.Form):
     subject = forms.CharField(max_length=100, required=True, label="Email Subject")
     message = forms.CharField(
@@ -31,7 +34,7 @@ class EmailForm(forms.Form):
         required=False,
         label="Send to All",
         help_text="Organizers can check this to send to all clients.",
-        initial=False,  # Default to False
+        initial=False,
     )
 
     def clean(self):
@@ -60,6 +63,7 @@ class EmailForm(forms.Form):
         return cleaned_data
 
 
+# Form for searching agents
 class AgentSearchForm(forms.Form):
     q = forms.CharField(
         required=False,

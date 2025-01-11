@@ -6,6 +6,7 @@ from django.db.models.functions import TruncMonth
 from django.utils.timezone import now, timedelta
 
 
+# Represents a client with personal details and related metrics
 class Client(models.Model):
     class StatusChoices(models.TextChoices):
         REGULAR = "Regular", _("Regular")
@@ -29,26 +30,26 @@ class Client(models.Model):
     )
 
     def generate_client_number(self):
-        """Generates a unique client number composed of digits."""
-        length = 8  # Length of the client number
+        # Generates a unique client number composed of digits.
+        length = 8
         return "".join(random.choices("0123456789", k=length))
 
     def update_status(self):
-        """Updates client status to 'Important' if they exceed a threshold of accepted orders."""
-        threshold = 2  # Number of accepted orders to qualify as 'Important'
+        # Updates client status based on the number of paid orders.
+        threshold = 2
         if self.orders.filter(status="Paid").count() > threshold:
             self.status = self.StatusChoices.IMPORTANT
         else:
             self.status = self.StatusChoices.REGULAR
 
     def save(self, *args, **kwargs):
-        """Assigns a client number before saving if it doesn't already exist."""
+        # Ensures a client number is assigned before saving.
         if not self.client_number:
             self.client_number = self.generate_client_number()
         super().save(*args, **kwargs)
 
     def total_revenue(self, start_date=None, end_date=None):
-        """Calculate total revenue for this client, considering only accepted orders."""
+        # Calculates total revenue for the client.
         queryset = self.orders.filter(status="Paid")
 
         if start_date:
@@ -66,7 +67,7 @@ class Client(models.Model):
         )
 
     def total_products_sold(self, start_date=None, end_date=None):
-        """Calculate total products sold for this client, considering only accepted orders."""
+        # Calculates total products sold for the client.
         queryset = self.orders.filter(status="Paid")
 
         if start_date:
@@ -77,7 +78,7 @@ class Client(models.Model):
         return queryset.aggregate(total=Sum("order_products__quantity"))["total"] or 0
 
     def order_statistics(self, start_date=None, end_date=None):
-        """Calculate order-related statistics for this client."""
+        # Provides statistics on orders made by the client.
         queryset = self.orders.filter(status="Paid")
 
         if start_date:
@@ -92,10 +93,7 @@ class Client(models.Model):
         }
 
     def monthly_order_stats(self, start_date=None, end_date=None):
-        """
-        Calculate the monthly number of accepted orders and total amount spent.
-        Returns a dictionary with 'labels', 'order_counts', and 'total_spent'.
-        """
+        # Calculates monthly order counts and spending totals.
         queryset = self.orders.filter(status="Paid")
 
         if start_date:
@@ -103,7 +101,6 @@ class Client(models.Model):
         if end_date:
             queryset = queryset.filter(date_created__lte=end_date)
 
-        # Annotate each order with the month it was created
         monthly_data = (
             queryset.annotate(month=TruncMonth("date_created"))
             .values("month")
@@ -123,10 +120,7 @@ class Client(models.Model):
         }
 
     def monthly_average_order_value(self, start_date=None, end_date=None):
-        """
-        Calculate the monthly Average Order Value (AOV) for the client.
-        Returns a dictionary with 'labels' and 'average_order_value'.
-        """
+        # Calculates monthly average order value (AOV).
         queryset = self.orders.filter(status="Paid")
 
         if start_date:
@@ -159,23 +153,16 @@ class Client(models.Model):
         }
 
     def lifetime_value_over_time(self):
-        """
-        Calculate the customer's lifetime value grouped by month for the last year.
-        Returns a dictionary with grouped months and cumulative revenue.
-        """
+        # Calculates lifetime value (LTV) for the client over the last year.
+        end_date = now()
+        start_date = end_date - timedelta(days=365)
 
-        # Define the time frame for the last year
-        end_date = now()  # Current date and time
-        start_date = end_date - timedelta(days=365)  # 12 months ago
-
-        # Aggregate revenue grouped by month within the last year
         orders = self.orders.filter(
             status="Paid",
             date_created__gte=start_date,
             date_created__lte=end_date,
         )
 
-        # Group by month
         grouped_data = (
             orders.annotate(period=TruncMonth("date_created"))
             .values("period")
@@ -187,7 +174,6 @@ class Client(models.Model):
             .order_by("period")
         )
 
-        # Calculate cumulative revenue
         cumulative_revenue = 0
         ltv_data = {"labels": [], "ltv_values": []}
         for entry in grouped_data:
@@ -201,6 +187,7 @@ class Client(models.Model):
         return f"{self.first_name} {self.last_name}"
 
 
+# Represents a contact interaction with a client
 class Contact(models.Model):
     class ReasonChoices(models.TextChoices):
         FOLLOW_UP = "Follow-up", _("Follow-up")

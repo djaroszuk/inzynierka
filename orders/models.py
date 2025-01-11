@@ -1,21 +1,26 @@
-from django.db import models
-from django.db.models import Sum, F
-from clients.models import Client
-from products.models import Product
-from django.db.models import Count
-from django.db.models.functions import TruncDay
-from django.utils import timezone
+# Standard Library Imports
 from decimal import Decimal
+
+# Django Core Imports
+from django.db import models
+from django.db.models import Sum, F, Count
+from django.db.models.functions import TruncDay
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 from django.utils.timezone import now
 
+# Models
+from clients.models import Client
+from products.models import Product
 
+
+# Manages order-related queries and statistics
 class OrderManager(models.Manager):
 
     def total_revenue(self, start_date=None, end_date=None):
-        """Calculate total revenue, optionally filtered by date range and order status (Paid)."""
-        queryset = self.filter(status="Paid")  # Only consider paid orders
+        # Calculates total revenue for paid orders within an optional date range
+        queryset = self.filter(status="Paid")
         if start_date:
             queryset = queryset.filter(date_created__gte=start_date)
         if end_date:
@@ -31,8 +36,8 @@ class OrderManager(models.Manager):
         )
 
     def total_products_sold(self, start_date=None, end_date=None):
-        """Calculate total quantity of products sold, optionally filtered by date range and order status (Paid)."""
-        queryset = self.filter(status="Paid")  # Only consider Paid orders
+        # Calculates total products sold for paid orders within an optional date range
+        queryset = self.filter(status="Paid")
         if start_date:
             queryset = queryset.filter(date_created__gte=start_date)
         if end_date:
@@ -41,7 +46,7 @@ class OrderManager(models.Manager):
         return queryset.aggregate(total=Sum("order_products__quantity"))["total"] or 0
 
     def order_statistics(self):
-        """Calculate overall statistics for orders, considering only Paid orders."""
+        # Provides general statistics for all paid orders
         return {
             "total_revenue": self.total_revenue(),
             "total_products_sold": self.total_products_sold(),
@@ -49,7 +54,7 @@ class OrderManager(models.Manager):
         }
 
     def orders_by_day(self):
-        """Get the total orders grouped by day."""
+        # Groups and counts paid orders by the day they were created
         orders = (
             self.filter(status="Paid")
             .annotate(day=TruncDay("date_created"))
@@ -63,6 +68,7 @@ class OrderManager(models.Manager):
         }
 
 
+# Represents an individual order and its details
 class Order(models.Model):
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="orders")
     date_created = models.DateTimeField(default=timezone.now)
@@ -89,9 +95,8 @@ class Order(models.Model):
         max_digits=5, decimal_places=2, default=0, help_text="Discount percentage"
     )
 
-    # Preset discount choices in the model
     DISCOUNT_CHOICES = {
-        "0": Decimal("0.00"),  # No discount
+        "0": Decimal("0.00"),
         "5": Decimal("0.05"),
         "10": Decimal("0.10"),
         "15": Decimal("0.15"),
@@ -100,29 +105,22 @@ class Order(models.Model):
 
     @property
     def total_price(self):
-        """
-        Calculate the total price of all products in this order,
-        including the discount if applicable.
-        """
+        # Calculates the total price of the order, accounting for product quantities
         return sum(
             item.product_price * item.quantity for item in self.order_products.all()
         )
 
     def get_discount_percentage(self):
-        """
-        Return discount choices in a format suitable for templates or forms.
-        """
+        # Provides discount choices formatted for display
         return [
             (key, f"{value * 100:.0f}%") for key, value in self.DISCOUNT_CHOICES.items()
         ]
 
     def save(self, *args, **kwargs):
-        """
-        Override save to log status changes in status_history.
-        """
-        if self.pk:  # Check if the instance already exists
+        # Overrides save to log status changes
+        if self.pk:
             old_status = Order.objects.get(pk=self.pk).status
-            if old_status != self.status:  # If the status has changed
+            if old_status != self.status:
                 self.status_history.append(
                     {
                         "previous_status": old_status,
@@ -136,23 +134,21 @@ class Order(models.Model):
         return f"Order {self.id} for {self.client}"
 
 
+# Represents a product within an order
 class OrderProduct(models.Model):
     order = models.ForeignKey(
         Order, on_delete=models.CASCADE, related_name="order_products"
     )
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
-    product_name = models.CharField(max_length=100)  # Snapshot of product name
-    product_price = models.DecimalField(
-        max_digits=10, decimal_places=2
-    )  # Snapshot price
+    product_name = models.CharField(max_length=100)
+    product_price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveIntegerField(default=1)
 
     def save(self, *args, **kwargs):
-        """Snapshot product name and price when saving."""
+        # Saves product snapshots (name and price) when creating or updating
         if not self.product_name and self.product:
             self.product_name = self.product.name
         if not self.product_price and self.product:
-            # Apply discount to product price
             discount_factor = Decimal("1.00") - (
                 Decimal(self.order.discount) / Decimal(100)
             )
@@ -160,24 +156,19 @@ class OrderProduct(models.Model):
         super().save(*args, **kwargs)
 
     def total_price(self):
-        """Calculate the total price for this line in the order."""
+        # Calculates the total price for this product line
         return self.product_price * self.quantity
 
     @classmethod
     def get_product_sales(cls, start_date=None, end_date=None):
-        """
-        Get the total quantity and total revenue of each product sold.
-        Optionally filter by date range.
-        """
+        # Retrieves sales data for products, optionally filtered by date range
         queryset = cls.objects.filter(order__status="Paid")
 
-        # Apply date filters if provided
         if start_date:
             queryset = queryset.filter(order__date_created__gte=start_date)
         if end_date:
             queryset = queryset.filter(order__date_created__lte=end_date)
 
-        # Aggregate total quantity and total revenue sold per product
         return (
             queryset.values("product_name")
             .annotate(
@@ -193,18 +184,8 @@ class OrderProduct(models.Model):
 
 @receiver(post_save, sender=Order)
 def update_client_status_on_order_save(sender, instance, **kwargs):
-    """
-    Update the client's status to 'Important' if they meet the threshold
-    for the number of accepted orders.
-    """
-    print(
-        f"Signal triggered for Order ID: {instance.id}"
-    )  # Print to confirm signal is triggered
-
-    client = instance.client  # Get the client associated with the order
+    # Updates client status based on order history when an order is saved
+    client = instance.client
     if client:
-        print(
-            f"Updating status for Client ID: {client.id}"
-        )  # Print to confirm client is found
-        client.update_status()  # Call the update_status method
-        client.save()  # Save the updated client object
+        client.update_status()
+        client.save()

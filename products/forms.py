@@ -3,6 +3,7 @@ from .models import Product
 from datetime import datetime, timedelta
 
 
+# Form for adding or editing product
 class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
@@ -14,21 +15,7 @@ class ProductForm(forms.ModelForm):
         ]
 
 
-class ProductAssignmentForm(forms.ModelForm):
-    class Meta:
-        model = Product
-        fields = ["clients"]
-
-
-class AddProductForm(forms.Form):
-    products = forms.ModelMultipleChoiceField(
-        queryset=Product.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
-        required=True,
-        label="Select Products",
-    )
-
-
+# Form for selecting months in last year
 class TimeFrameSelectionForm(forms.Form):
     # Define the choices for the time frame
     TIMEFRAME_CHOICES = [

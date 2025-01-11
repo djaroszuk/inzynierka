@@ -35,13 +35,13 @@
                 hover:shadow-lg transition-shadow">
                 <!-- Left Bar -->
                 <div class="flex">
-                    <div class="w-1.5
+                    <div class="w-1.5 rounded-l-md
                         {% if client.status == "Important" %}
                             bg-yellow-400
                         {% else %}
                             bg-gray-400
                         {% endif %}
-                        rounded-l-md" style="height: calc(100% + 15px); margin-top: -7.5px;"></div>
+                        h-[calc(100%_+_15px)] -mt-[7.5px]"></div>
                     <div class="ml-5 w-full">
                         <!-- Client Info -->
                         <h2 class="text-xl font-bold text-gray-900">{{ client.first_name }} {{ client.last_name }}</h2>
@@ -56,9 +56,9 @@
                 </div>
                 <!-- Adjusted Button Placement -->
                 <div class="flex justify-end mt-3">
-                    <a href="{% url 'clients:client-detail' client.client_number %}" class="px-3 py-1.5 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 text-sm font-medium">
+                    <a href="{% url 'clients:client-detail' client.client_number %}" class="px-3 py-1.5 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 text-sm font-medium flex items-center">
                         View Client
-                        <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-3.5 h-3.5 ml-1 inline" viewBox="0 0 24 24">
+                        <svg fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="w-3.5 h-3.5 ml-1" viewBox="0 0 24 24">
                             <path d="M5 12h14M12 5l7 7-7 7"></path>
                         </svg>
                     </a>

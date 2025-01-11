@@ -7,7 +7,7 @@ from decimal import Decimal
 
 # Django Core Imports
 from django.shortcuts import get_object_or_404, redirect, render, reverse
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.http import urlencode
 from django.utils.timezone import now
 from django.utils.dateparse import parse_datetime
@@ -18,8 +18,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib import messages
 from django.views import generic
-from django.http import HttpResponse
-
+from django.conf import settings
 
 # Django Authentication Mixins
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -31,37 +30,36 @@ from agents.mixins import OrganisorAndLoginRequiredMixin
 from .forms import OrderSearchForm
 from products.forms import TimeFrameSelectionForm
 
-
 # Models
 from .models import Order, OrderProduct
 from products.models import Product
 from clients.models import Client, Contact
 
 
+# Handles listing and filtering orders
 class OrderListView(LoginRequiredMixin, generic.ListView):
     model = Order
     template_name = "orders/order_list.html"
     context_object_name = "orders"
-    paginate_by = 15  # Set pagination to 15 orders per page
+    paginate_by = 15  # Number of orders per page
 
     def get_queryset(self):
+        # Returns orders sorted by creation date, filtered by query
         queryset = Order.objects.select_related("client").order_by("-date_created")
 
         query = self.request.GET.get("q")
         if query:
             try:
-                # Filter by exact match if query is a valid integer
-                query = int(query)
+                query = int(query)  # Match exact order ID if the query is an integer
                 queryset = queryset.filter(id=query)
             except ValueError:
-                # Ignore non-integer queries
-                queryset = queryset.none()
+                queryset = queryset.none()  # Ignore non-integer queries
+
         return queryset
 
     def get_context_data(self, **kwargs):
+        # Adds search form and paginated orders to the context
         context = super().get_context_data(**kwargs)
-
-        # Get paginated queryset
         orders = self.get_queryset()
         paginator = Paginator(orders, self.paginate_by)
         page = self.request.GET.get("page", 1)
@@ -73,18 +71,18 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
         except EmptyPage:
             paginated_orders = paginator.page(paginator.num_pages)
 
-        # Add paginated and searched orders to context
         context["orders"] = paginated_orders
         context["search_form"] = OrderSearchForm(self.request.GET)
         return context
 
     def get(self, request, *args, **kwargs):
+        # Handles exporting orders to CSV if requested
         if request.GET.get("export") == "csv":
             return self.export_to_csv()
         return super().get(request, *args, **kwargs)
 
     def export_to_csv(self):
-        """Generate a CSV file with all orders."""
+        # Exports orders to a CSV file
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="orders.csv"'
 
@@ -106,6 +104,7 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
         return response
 
     def post(self, request, *args, **kwargs):
+        # Handles bulk cancellation of pending orders older than 48 hours
         if request.user.is_organisor and "delete_pending_orders" in request.POST:
             cutoff_time = now() - timedelta(minutes=1)
             pending_orders = Order.objects.filter(
@@ -115,7 +114,7 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
             count = pending_orders.count()
             if count > 0:
                 for order in pending_orders:
-                    # Restore product quantities and create contact records
+                    # Restore product stock and notify clients
                     for order_product in order.order_products.select_related("product"):
                         if order_product.product:
                             order_product.product.stock_quantity += (
@@ -135,7 +134,7 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
 
                 messages.success(
                     request,
-                    f"{count} pending orders older than 48 hours were canceled, stock was restored, and clients notified.",
+                    f"{count} pending orders older than 48 hours were canceled, stock restored, and clients notified.",
                 )
             else:
                 messages.warning(
@@ -146,36 +145,35 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
         return redirect("orders:order-list")
 
 
+# Displays orders for a specific client
 class ClientOrdersView(LoginRequiredMixin, generic.ListView):
     model = Order
     template_name = "orders/client_orders.html"
     context_object_name = "orders"
-    paginate_by = 15
+    paginate_by = 15  # Number of orders per page
 
     def get_queryset(self):
-        # Filter orders by the specific client
+        # Filters orders by the client associated with the given client_number
         client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
         queryset = Order.objects.filter(client=client).order_by("-date_created")
 
-        # Search functionality (same as in OrderListView)
         query = self.request.GET.get("q")
         if query:
             try:
-                query = int(query)  # Filter by exact match if query is an integer
+                query = int(query)  # Match exact order ID if the query is an integer
                 queryset = queryset.filter(id=query)
             except ValueError:
-                queryset = queryset.none()
+                queryset = queryset.none()  # Ignore non-integer queries
+
         return queryset
 
     def get_context_data(self, **kwargs):
+        # Adds client information and paginated orders to the context
         context = super().get_context_data(**kwargs)
-
-        # Add client information to the context
         client = get_object_or_404(Client, client_number=self.kwargs["client_number"])
         context["client"] = client
         context["client_number"] = client.client_number
 
-        # Add paginated orders to context (same as in OrderListView)
         orders = self.get_queryset()
         paginator = Paginator(orders, self.paginate_by)
         page = self.request.GET.get("page", 1)
@@ -188,19 +186,17 @@ class ClientOrdersView(LoginRequiredMixin, generic.ListView):
             paginated_orders = paginator.page(paginator.num_pages)
 
         context["orders"] = paginated_orders
-        context["search_form"] = OrderSearchForm(self.request.GET)  # Retain search form
+        context["search_form"] = OrderSearchForm(self.request.GET)
         return context
 
     def get(self, request, *args, **kwargs):
-        # Check if the user wants to export to CSV
+        # Handles exporting client orders to CSV if requested
         if request.GET.get("export") == "csv":
             return self.export_to_csv()
-
-        # Otherwise, handle as normal GET request
         return super().get(request, *args, **kwargs)
 
     def export_to_csv(self):
-        """Generate a CSV file with client-specific orders."""
+        # Exports client orders to a CSV file
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="client_orders.csv"'
 
@@ -222,41 +218,38 @@ class ClientOrdersView(LoginRequiredMixin, generic.ListView):
         return response
 
 
+# Displays details for a specific order
 class OrderDetailView(LoginRequiredMixin, generic.DetailView):
     model = Order
     template_name = "orders/order_detail.html"
     context_object_name = "order"
 
     def get_object(self):
-        """Retrieve the order based on its primary key."""
+        # Retrieves the order by its primary key
         return get_object_or_404(Order, pk=self.kwargs["pk"])
 
     def get_context_data(self, **kwargs):
-        """Add parsed status history to the context."""
+        # Adds parsed status history to the context
         context = super().get_context_data(**kwargs)
         order = self.get_object()
 
-        # Parse `changed_at` into datetime objects
         parsed_status_history = []
         for change in order.status_history:
             change["changed_at"] = parse_datetime(change["changed_at"])
             parsed_status_history.append(change)
 
-        # Add parsed status history to the context
         context["status_history"] = parsed_status_history
         return context
 
     def post(self, request, *args, **kwargs):
-        """Handle actions for Mark as Paid and Cancel Order buttons."""
+        # Handles marking the order as paid or canceling the order
         order = self.get_object()
 
-        # Handle "Mark as Paid" functionality
         if "mark_as_paid" in request.POST:
-            if order.status != "Paid":  # Only update if not already paid
+            if order.status != "Paid":
                 order.status = "Paid"
                 order.save()
 
-                # Send email confirmation
                 subject = f"Payment Confirmation for Order #{order.id}"
                 message = (
                     f"Dear Client,\n\n"
@@ -265,13 +258,13 @@ class OrderDetailView(LoginRequiredMixin, generic.DetailView):
                     f"Your order will be processed and shipped soon.\n\n"
                     f"Thank you for shopping with us!\n\n"
                     f"Best regards,\n"
-                    f"Your Company Name"
+                    f"Dominik Jaroszuk CRM"
                 )
-                recipient = order.client.email  # Assuming the client has an email field
+                recipient = order.client.email
                 send_mail(
                     subject,
                     message,
-                    "your-email@example.com",  # Replace with your "from" email
+                    settings.EMAIL_HOST_USER,
                     [recipient],
                     fail_silently=False,
                 )
@@ -282,7 +275,6 @@ class OrderDetailView(LoginRequiredMixin, generic.DetailView):
                     request, f"Order #{order.id} is already marked as Paid."
                 )
 
-        # Handle "Cancel Order" functionality
         elif "cancel_order" in request.POST:
             if order.status == "Paid":
                 messages.error(
@@ -292,33 +284,40 @@ class OrderDetailView(LoginRequiredMixin, generic.DetailView):
             elif order.status == "Canceled":
                 messages.warning(request, f"Order #{order.id} is already canceled.")
             else:
-                # Update order status to Canceled
+                # Restore stock for each product in the order
+                for order_product in order.order_products.all():
+                    product = order_product.product
+                    if product:
+                        product.stock_quantity += order_product.quantity
+                        product.save()
+
+                # Update the order status and save changes
                 order.status = "Canceled"
                 order.save()
 
-                # Create a contact record for the client
+                # Create a contact entry for the canceled order
                 Contact.objects.create(
                     client=order.client,
-                    reason=Contact.ReasonChoices.CUSTOMER_REQUEST,
+                    reason=Contact.ReasonChoices.SALES_OFFER,
                     description=f"Order #{order.id} was canceled due to the client's request.",
                     contact_date=now(),
                     user=request.user.userprofile,
                 )
 
-                # Send email confirmation (optional)
+                # Send cancellation confirmation email to the client
                 subject = f"Order #{order.id} Cancellation Confirmation"
                 message = (
-                    f"Dear {order.client.name},\n\n"
+                    f"Dear Client,\n\n"
                     f"Your Order #{order.id} has been successfully canceled as per your request.\n"
                     f"If you have any questions, please contact our support team.\n\n"
                     f"Best regards,\n"
-                    f"Your Company Name"
+                    f"Dominik Jaroszuk CRM"
                 )
-                recipient = order.client.email  # Assuming the client has an email field
+                recipient = order.client.email
                 send_mail(
                     subject,
                     message,
-                    "your-email@example.com",  # Replace with your "from" email
+                    settings.EMAIL_HOST_USER,  # Replace with a valid email address
                     [recipient],
                     fail_silently=False,
                 )
@@ -326,18 +325,17 @@ class OrderDetailView(LoginRequiredMixin, generic.DetailView):
                 messages.success(
                     request, f"Order #{order.id} has been successfully canceled."
                 )
-
-        # Redirect back to the same detail page
         return redirect("orders:order-detail", pk=order.pk)
 
 
+# Handles creating new orders
 class OrderCreateView(LoginRequiredMixin, generic.CreateView):
     model = Order
     template_name = "orders/order_create.html"
     fields = ["client"]
 
     def get_initial(self):
-        """Set the initial value for the client field."""
+        # Sets the initial client value if a client_number is provided
         initial = super().get_initial()
         client_number = self.request.GET.get("client_number")
         if client_number:
@@ -352,11 +350,10 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
         return initial
 
     def get_context_data(self, **kwargs):
-        """Add the list of products and discount options to the context."""
+        # Adds available products and discount options to the context
         context = super().get_context_data(**kwargs)
         context["products"] = Product.objects.all().order_by("price")
 
-        # Convert discount choices to a list of tuples
         context["discount_choices"] = [
             (key, f"{value * 100:.0f}%")
             for key, value in self.model.DISCOUNT_CHOICES.items()
@@ -364,14 +361,11 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
         return context
 
     def form_valid(self, form):
-        """Handle creating the order with associated products and a discount."""
-        selected_product_ids = self.request.POST.getlist(
-            "product"
-        )  # Get selected product IDs
+        # Validates and creates the order and its associated products
+        selected_product_ids = self.request.POST.getlist("product")
         discount = self.request.POST.get("discount", "0")
         discount = self.model.DISCOUNT_CHOICES.get(discount, Decimal("0.00"))
 
-        # Parse quantities tied to selected products
         selected_products = []
         for product_id in selected_product_ids:
             quantity_field = f"quantity_{product_id}"
@@ -379,7 +373,6 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
             if quantity > 0:
                 selected_products.append((product_id, quantity))
 
-        # Check if at least one product is selected
         if not selected_products:
             messages.error(
                 self.request,
@@ -389,7 +382,6 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
                 self.request, self.template_name, self.get_context_data(form=form)
             )
 
-        # Validate stock for selected products
         for product_id, quantity in selected_products:
             product = get_object_or_404(Product, pk=product_id)
             if product.stock_quantity < quantity:
@@ -401,29 +393,25 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
                     self.request, self.template_name, self.get_context_data(form=form)
                 )
 
-        # Create the order
         order = form.save(commit=False)
         order.agent = self.request.user.agent
-        order.discount = discount * 100  # Save discount as percentage
+        order.discount = discount * 100
         order.status = "Pending"
         order.save()
 
-        # Create OrderProduct entries for selected products
         for product_id, quantity in selected_products:
             product = get_object_or_404(Product, pk=product_id)
             product.stock_quantity -= quantity
             product.save()
 
-            # Create the OrderProduct with discounted price
             OrderProduct.objects.create(
                 order=order,
                 product=product,
                 quantity=quantity,
                 product_name=product.name,
-                product_price=None,  # Let the `save` method calculate discounted price
+                product_price=None,
             )
 
-        # Create a Contact entry for the order
         Contact.objects.create(
             client=order.client,
             reason=Contact.ReasonChoices.SALES_OFFER,
@@ -437,24 +425,26 @@ class OrderCreateView(LoginRequiredMixin, generic.CreateView):
         )
 
 
+# Handles displaying a summary of an order and managing actions like sending offers or canceling the order
 class OrderSummaryView(LoginRequiredMixin, generic.DetailView):
     model = Order
     template_name = "orders/order_summary.html"
 
     def post(self, request, *args, **kwargs):
+        # Handles POST actions for sending offers or canceling orders
         order = self.get_object()
         action = request.POST.get("action")
 
         if action == "send_offer":
-            # Generate a unique token for the link
+            # Generate a unique token for the order offer
             token = str(uuid.uuid4())
-            order.offer_token = token  # Save the token in the order model (you should add this field to your model)
+            order.offer_token = token
             order.save()
 
-            # # Send email to the client with a link to accept or deny
+            # Send an email to the client with the offer link
             subject = f"Offer for Order #{order.id}"
             message = f"""
-                Dear {order.client.first_name},
+                Dear Client,
 
                 An offer has been made for your order #{order.id}. To review and either accept or deny the offer, please click the link below:
 
@@ -463,31 +453,28 @@ class OrderSummaryView(LoginRequiredMixin, generic.DetailView):
                 If you have any questions, please contact us.
 
                 Best regards,
-                Your Company Name
+                Dominik Jaroszuk CRM
             """
             send_mail(
                 subject,
                 message,
-                "from@example.com",  # Replace with your email
+                settings.EMAIL_HOST_USER,  # Replace with a valid email address
                 [order.client.email],
                 fail_silently=False,
             )
-            # Instead of sending an email, print the link to the console
-            offer_url = self.get_order_confirmation_url(order, token)
-            print(f"Mock email sent to {order.client.email} with the link: {offer_url}")
 
+            # Inform the user and redirect back to the order list
             messages.success(request, "The offer has been sent to the client.")
             return redirect("orders:order-list")
 
         elif action == "cancel":
-            # Restore product quantities
+            # Restore product quantities and delete the order
             for order_product in order.order_products.all():
                 product = order_product.product
                 if product:
                     product.stock_quantity += order_product.quantity
                     product.save()
 
-            # Delete the order
             order.delete()
             messages.success(
                 request,
@@ -495,26 +482,27 @@ class OrderSummaryView(LoginRequiredMixin, generic.DetailView):
             )
             return redirect("orders:order-list")
 
+        # Handle invalid actions
         messages.error(request, "Invalid action.")
         return redirect("orders:order-summary", pk=order.pk)
 
     def get_order_confirmation_url(self, order, token):
-        # Generate the link that the client will click to accept or deny the offer
+        # Generate the confirmation link for the client to accept or deny the order
         domain = get_current_site(self.request).domain
         path = reverse("orders:order_confirm", kwargs={"order_id": order.id})
         query = urlencode({"token": token})
         return f"http://{domain}{path}?{query}"
 
 
+# Handles client interactions for confirming or denying an order offer
 class OrderConfirmView(generic.View):
     def get(self, request, *args, **kwargs):
+        # Display the confirmation page for an order offer
         order_id = kwargs["order_id"]
         token = request.GET.get("token")
 
-        # Get the order based on the ID and check if the token matches
+        # Verify the token matches the one stored in the order
         order = get_object_or_404(Order, pk=order_id)
-
-        # Check if the token matches the one stored in the order
         if order.offer_token != token:
             messages.error(request, "Invalid or expired offer link.")
             return redirect("orders:order-list")
@@ -522,38 +510,36 @@ class OrderConfirmView(generic.View):
         return render(request, "orders/order_confirm.html", {"order": order})
 
     def post(self, request, *args, **kwargs):
+        # Handles accepting or denying an order offer
         order_id = kwargs["order_id"]
         token = request.POST.get("token")
         action = request.POST.get("action")
 
-        # Pobierz zamówienie i zweryfikuj token
         order = get_object_or_404(Order, pk=order_id)
 
+        # Validate the token
         if order.offer_token != token:
             messages.error(request, "Invalid or expired offer link.")
             return redirect("orders:order-list")
 
         if action == "accept":
-            # Akceptacja zamówienia
+            # Accept the order and send a payment email
             order.status = "Accepted"
             order.save()
-
-            # Wyślij e-mail z informacjami o płatności
             self.send_payment_email(order)
 
             messages.success(
                 request, "The offer has been accepted. A payment email has been sent."
             )
         elif action == "deny":
-            # Odrzucenie zamówienia
+            # Deny the order and restore product quantities
             order.status = "Canceled"
             order.save()
-
-            # Przywrócenie produktów do stanu magazynowego
             for order_product in order.order_products.all():
                 product = order_product.product
-                product.stock_quantity += order_product.quantity
-                product.save()
+                if product:
+                    product.stock_quantity += order_product.quantity
+                    product.save()
 
             messages.success(
                 request, "The offer has been denied, and the order has been canceled."
@@ -564,43 +550,40 @@ class OrderConfirmView(generic.View):
         return redirect("/")
 
     def send_payment_email(self, order):
-        """Wyślij e-mail z informacjami o płatności."""
+        # Send an email with payment details for the order
         subject = f"Payment Details for Order #{order.id}"
         account_number = "0000 0000 0000 0000"
-        client_number = (
-            order.client.client_number
-        )  # Zakładam, że klient ma pole `client_number`
-        total_price = order.total_price  # Zakładam, że zamówienie ma pole `total_price`
+        client_number = order.client.client_number
+        total_price = order.total_price
 
         message = f"""
-        Dear {order.client.first_name},
+        Dear Client,
 
         Thank you for accepting the offer for your order #{order.id}.
 
         Please make a payment to the following account number:
         Account Number: {account_number}
 
-        In the payment title, please include:
-        Client Number: {client_number}
-        Order Number: {order.id}
+        In the payment title, please write: {client_number}, order #{order.id}
 
         Total Amount: {total_price} USD
 
         Thank you for your business.
 
         Best regards,
-        Your Company Name
+        Dominik Jaroszuk CRM
         """
 
         send_mail(
             subject,
             message,
-            "from@example.com",  # Twój adres e-mail
+            settings.EMAIL_HOST_USER,  # Replace with a valid email address
             [order.client.email],
             fail_silently=False,
         )
 
 
+# Displays statistics for orders, including revenue, products sold, and completion rates
 class OrderStatisticsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
     template_name = "orders/order-statistics.html"
 

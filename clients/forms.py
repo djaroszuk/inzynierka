@@ -3,8 +3,8 @@ from django import forms
 from .models import Client, Contact
 
 
+# Form for clients handling for agents
 class ClientForm(forms.ModelForm):
-    """Form for non-organizer users."""
 
     class Meta:
         model = Client
@@ -18,8 +18,8 @@ class ClientForm(forms.ModelForm):
         }
 
 
+# Form for client handling for organisor, possible to change status with this.
 class OrganisorClientForm(ClientForm):
-    """Extended form for organizers to include the 'status' field."""
 
     class Meta(ClientForm.Meta):
         fields = ClientForm.Meta.fields + ["status"]
@@ -29,18 +29,19 @@ class OrganisorClientForm(ClientForm):
         }
 
 
+# Form for creation of new instance in contact history
 class ContactForm(forms.ModelForm):
     class Meta:
         model = Contact
         fields = ["reason", "description"]
 
     def __init__(self, *args, **kwargs):
-        """Customize form appearance and initialization."""
         super().__init__(*args, **kwargs)
         self.fields["reason"].widget.attrs.update({"class": "form-control"})
         self.fields["description"].widget.attrs.update({"class": "form-control"})
 
 
+# Filter for searching clients
 class ClientSearchForm(forms.Form):
     q = forms.CharField(
         label="Search by Client Number",

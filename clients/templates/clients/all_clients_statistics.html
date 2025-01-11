@@ -5,7 +5,6 @@
 <section class="text-gray-600 body-font overflow-hidden">
     <div class="container px-5 py-20 mx-auto">
         <div class="lg:w-4/5 mx-auto">
-            <!-- Header Section -->
             <div class="lg:w-3/5 mx-auto flex flex-col items-center">
                 <div class="w-full lg:py-8 mb-8">
                     <h1 class="text-gray-900 text-5xl title-font font-bold mb-6 text-center">
@@ -143,9 +142,6 @@
 {% if ltv_data %}
 <script id="ltvData" type="application/json">
     {{ ltv_data|safe }}
-</script>
-<script id="baselineValue" type="application/json">
-    {{ baseline_value|safe }}
 </script>
 {% endif %}
 {% endblock %}

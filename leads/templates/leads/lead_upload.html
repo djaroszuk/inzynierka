@@ -1,32 +1,37 @@
 {% extends "base.html" %}
+
 {% block content %}
 
-<section class="text-gray-600 body-font">
-    <div class="container mx-auto px-6 py-12">
+<section class="text-gray-600 body-font py-12">
+    <div class="container mx-auto px-6">
         <div class="bg-white shadow-lg rounded-lg p-8 lg:w-3/4 mx-auto">
             <!-- Page Header -->
-            <div class="mb-6 text-center">
-                <h1 class="text-gray-900 text-2xl font-bold">Upload Leads</h1>
-                <p class="text-gray-500 mt-2">Use the form below to upload leads in bulk.</p>
+            <div class="mb-8 text-center">
+                <h1 class="text-3xl font-semibold text-gray-900">Upload Leads</h1>
+                <p class="text-gray-500 mt-2 text-lg">Use the form below to upload leads in bulk.</p>
+                <p class="text-gray-500 mt-4 text-sm">
+                    <strong class="text-red-600">IMPORTANT:</strong> Please ensure your Excel file contains the following columns:
+                    <strong class="font-semibold">First Name, Last Name, Age, Email, Phone Number</strong>.
+                    All fields must be filled out, and email addresses must be unique to avoid duplicates.
+                </p>
             </div>
 
             <!-- Form -->
             <form method="post" enctype="multipart/form-data" class="space-y-6">
                 {% csrf_token %}
-                <div>
+                <div class="mb-4">
                     {{ form.as_p }}
                 </div>
                 <div class="flex justify-center">
-                    <button type="submit" class="w-1/2 bg-indigo-500 text-white hover:bg-indigo-600 px-4 py-2 rounded-md">
+                    <button type="submit" class="w-1/2 bg-indigo-600 text-white hover:bg-indigo-700 px-6 py-3 rounded-md font-semibold">
                         Upload
                     </button>
                 </div>
             </form>
 
-
             <!-- Back Button -->
             <div class="mt-6 text-center">
-                <a href="{% url 'leads:lead-list' %}" class="text-indigo-500 hover:underline">
+                <a href="{% url 'leads:lead-list' %}" class="text-indigo-600 hover:text-indigo-700 font-medium">
                     Go back to leads
                 </a>
             </div>

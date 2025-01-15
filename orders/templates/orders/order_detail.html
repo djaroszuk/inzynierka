@@ -65,8 +65,8 @@
 
 
         <form method="post" class="mt-6 flex space-x-4">
-            {% if request.user.is_organisor %}
             {% csrf_token %}
+            {% if request.user.is_organisor %}
             <!-- Mark as Paid Button -->
             <button
                 type="submit"

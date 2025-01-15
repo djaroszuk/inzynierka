@@ -1,9 +1,13 @@
 import openpyxl
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.shortcuts import render, reverse, redirect
 from django.urls import reverse_lazy
+from django.utils.html import format_html
+from django.utils.timezone import now
 from django.views import generic, View
 from agents.mixins import OrganisorAndLoginRequiredMixin
-from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import Lead, Category
 from clients.models import Client
 from .forms import (
@@ -12,13 +16,11 @@ from .forms import (
     LeadCategoryUpdateForm,
     CategoryFilterForm,
     LeadUploadForm,
+    LeadAgentForm,
 )
-from django.shortcuts import render, reverse, redirect
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from django.utils.html import format_html
-from django.utils.timezone import now
 
 
+# View for signing up new users (registration).
 class SignupView(generic.CreateView):
     template_name = "registration/signup.html"
     form_class = CustomUserCreationForm
@@ -27,26 +29,23 @@ class SignupView(generic.CreateView):
         return reverse("login")
 
 
+# View to display a list of leads with pagination and filtering.
 class LeadListView(LoginRequiredMixin, generic.ListView):
     model = Lead
     template_name = "leads/lead-list.html"
     context_object_name = "leads"
-    paginate_by = 9  # Set pagination to 10 leads per page
+    paginate_by = 9  # Pagination set to 9 leads per page
 
     def dispatch(self, request, *args, **kwargs):
-        # Skip redirection logic for POST requests
         if request.method == "POST":
             return self.post(request, *args, **kwargs)
 
-        # Only apply redirection logic for GET requests
         if request.method == "GET":
             query_params = request.GET.copy()
 
-            # Default `page` to 1 if missing
             if "page" not in query_params:
                 query_params["page"] = 1
 
-            # Redirect only if `page` is missing or invalid
             if query_params != request.GET and query_params["page"] != request.GET.get(
                 "page"
             ):
@@ -57,17 +56,15 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        """
-        Retrieves the filtered queryset based on the category and unassigned_only parameters.
-        """
         user = self.request.user
         category_name = self.request.GET.get("category", "").strip()
         unassigned_only = self.request.GET.get("unassigned_only")
 
-        if user.is_organisor:
-            queryset = Lead.objects.all()
-        else:
-            queryset = Lead.objects.filter(agent__user=user)
+        queryset = (
+            Lead.objects.all()
+            if user.is_organisor
+            else Lead.objects.filter(agent__user=user)
+        )
 
         if category_name:
             queryset = queryset.filter(category__name=category_name)
@@ -78,12 +75,7 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
         return queryset.order_by("-date_created")
 
     def get_context_data(self, **kwargs):
-        """
-        Adds custom pagination logic to the context.
-        """
         context = super().get_context_data(**kwargs)
-
-        # Get paginated queryset
         leads = self.get_queryset()
         paginator = Paginator(leads, self.paginate_by)
         page = self.request.GET.get("page", 1)
@@ -95,7 +87,6 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
         except EmptyPage:
             paginated_leads = paginator.page(paginator.num_pages)
 
-        # Add paginated leads and filters to context
         context["leads"] = paginated_leads
         context["form"] = CategoryFilterForm(self.request.GET)
         context["unassigned_only"] = self.request.GET.get("unassigned_only", False)
@@ -114,9 +105,7 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
         """
         user = self.request.user
 
-        # Ensure only agents can take leads
         if not user.is_organisor and hasattr(user, "agent") and user.agent:
-            # Retrieve the oldest unassigned lead
             oldest_unassigned_lead = (
                 Lead.objects.filter(agent__isnull=True, category__name="new")
                 .order_by("date_created")
@@ -124,26 +113,23 @@ class LeadListView(LoginRequiredMixin, generic.ListView):
             )
 
             if oldest_unassigned_lead:
-                # Assign the lead to the current agent
                 oldest_unassigned_lead.agent = user.agent
                 oldest_unassigned_lead.save()
 
-                # Success feedback
                 messages.success(
                     request,
                     f"You successfully took the lead: {oldest_unassigned_lead.first_name} {oldest_unassigned_lead.last_name}.",
                 )
             else:
-                # No unassigned leads available
                 messages.warning(request, "No unassigned leads available.")
         else:
             messages.error(request, "You are not authorized to take leads.")
 
-        # Redirect and preserve query parameters
         query_params = request.GET.urlencode()
         return redirect(f"{reverse('leads:lead-list')}?{query_params}")
 
 
+# View to create a new lead.
 class LeadCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
     model = Lead
     form_class = LeadForm
@@ -152,21 +138,15 @@ class LeadCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
 
     def form_valid(self, form):
         lead = form.save(commit=False)
-
-        # Get the default "new" category for the current organisation
         new_category = Category.objects.get(name="new")
-
-        # Assign the "new" category to the lead
         lead.category = new_category
-
-        # Save the lead without assigning to an agent or organisation initially
         lead.save()
 
-        # Success message
         messages.success(self.request, "You have successfully created a lead")
         return super().form_valid(form)
 
 
+# View to show the details of a specific lead.
 class LeadDetailView(LoginRequiredMixin, generic.DetailView):
     model = Lead
     template_name = "leads/lead_detail.html"
@@ -181,19 +161,18 @@ class LeadDetailView(LoginRequiredMixin, generic.DetailView):
         return queryset
 
     def post(self, request, *args, **kwargs):
-        lead = self.get_object()  # Retrieve the lead instance
-        lead.comment = request.POST.get("comment", lead.comment)  # Update the comment
-        lead.save()  # Save the updated lead
+        lead = self.get_object()
+        lead.comment = request.POST.get("comment", lead.comment)
+        lead.save()
         return render(request, self.template_name, {"lead": lead})
 
 
+# View to update details of an existing lead.
 class LeadUpdateView(LoginRequiredMixin, generic.UpdateView):
     model = Lead
-    form_class = LeadForm
+    form_class = None
     template_name = "leads/lead_update.html"
-    success_url = reverse_lazy(
-        "leads:lead-list"
-    )  # Po aktualizacji przekierowuje do listy leadów
+    success_url = reverse_lazy("leads:lead-list")
 
     def get_queryset(self):
         user = self.request.user
@@ -203,13 +182,18 @@ class LeadUpdateView(LoginRequiredMixin, generic.UpdateView):
             queryset = Lead.objects.filter(agent__user=user)
         return queryset
 
+    def get_form_class(self):
+        # Returns a form class dynamically based on user role
+        if self.request.user.is_organisor:
+            return LeadForm
+        return LeadAgentForm
 
+
+# View to delete an existing lead.
 class LeadDeleteView(LoginRequiredMixin, generic.DeleteView):
     model = Lead
     template_name = "leads/lead_delete.html"
-    success_url = reverse_lazy(
-        "leads:lead-list"
-    )  # Po usunięciu przekierowuje do listy leadów
+    success_url = reverse_lazy("leads:lead-list")
 
     def get_queryset(self):
         user = self.request.user
@@ -220,14 +204,17 @@ class LeadDeleteView(LoginRequiredMixin, generic.DeleteView):
         return queryset
 
 
+# Landing page view.
 class LandingPageView(generic.TemplateView):
     template_name = "landing.html"
 
 
+# Simple landing page view function.
 def landing_page(request):
     return render(request, "landing.html")
 
 
+# View to update the category of a lead.
 class LeadCategoryUpdateView(LoginRequiredMixin, generic.UpdateView):
     template_name = "leads/lead_category_update.html"
     form_class = LeadCategoryUpdateForm
@@ -235,28 +222,28 @@ class LeadCategoryUpdateView(LoginRequiredMixin, generic.UpdateView):
     def get_queryset(self):
         user = self.request.user
         if user.is_organisor:
-            queryset = Lead.objects.all()  # All leads for the organiser
+            queryset = Lead.objects.all()
         else:
-            queryset = Lead.objects.filter(
-                agent__user=user
-            )  # Leads assigned to the agent
+            queryset = Lead.objects.filter(agent__user=user)
         return queryset
 
     def form_valid(self, form):
         lead = self.object
 
-        # Check if the lead is being converted
         if lead.convert:
             lead.is_converted = True
-            lead.convert = False  # Prevent retriggering
+            lead.convert = False
             lead.save(update_fields=["is_converted", "convert"])
 
-            # Set conversion date if not already set
             if not lead.conversion_date:
                 lead.conversion_date = now()
                 lead.save(update_fields=["conversion_date"])
 
-            # Handle client creation if the category is "sale"
+            # Save the updated category, if there is a change
+            if form.cleaned_data.get("category"):
+                lead.category = form.cleaned_data["category"]
+                lead.save(update_fields=["category"])
+
             if lead.category and lead.category.name.lower() == "sale":
                 client, created_client = Client.objects.get_or_create(
                     email=lead.email,
@@ -289,14 +276,14 @@ class LeadCategoryUpdateView(LoginRequiredMixin, generic.UpdateView):
             else:
                 messages.success(self.request, "Lead converted successfully.")
 
-        # Always redirect to the lead detail view
         return redirect(self.get_success_url())
 
     def get_success_url(self):
         return reverse("leads:lead-detail", kwargs={"pk": self.object.pk})
 
 
-class LeadUploadView(LoginRequiredMixin, View):
+# View to upload leads from an Excel file.
+class LeadUploadView(OrganisorAndLoginRequiredMixin, View):
     template_name = "leads/lead_upload.html"
 
     def get(self, request, *args, **kwargs):
@@ -309,67 +296,44 @@ class LeadUploadView(LoginRequiredMixin, View):
         if form.is_valid():
             file = form.cleaned_data["file"]
             try:
-                # Load the Excel file
                 wb = openpyxl.load_workbook(file)
                 sheet = wb.active
 
-                skipped_rows = []  # Track rows with missing fields
-                duplicate_emails = []  # Track duplicate email entries
-                created_leads = 0  # Count successfully created leads
+                skipped_rows = []
+                duplicate_emails = []
+                created_leads = 0
                 new_category = Category.objects.get(name="new")
 
-                # Process each row in the sheet (skip header row)
                 for idx, row in enumerate(
                     sheet.iter_rows(min_row=2, values_only=True), start=2
                 ):
                     first_name, last_name, age, email, phone_number = row[:5]
 
-                    # Skip rows with empty required fields
                     if not all([first_name, last_name, age, email, phone_number]):
-                        skipped_rows.append(idx)  # Add row number to skipped list
+                        skipped_rows.append(idx)
                         continue
 
-                    # Check for duplicates
                     if Lead.objects.filter(email=email).exists():
                         duplicate_emails.append(email)
                         continue
 
-                    # Create the lead
                     Lead.objects.create(
                         first_name=first_name,
                         last_name=last_name,
-                        age=int(age),
+                        age=age,
                         email=email,
-                        phone_number=phone_number,  # Add phone number
-                        category=new_category,  # Assign the "new" category
+                        phone_number=phone_number,
+                        category=new_category,
                     )
                     created_leads += 1
 
-                # Provide feedback after processing
-                if skipped_rows:
-                    messages.warning(
-                        request,
-                        f"Skipped rows due to missing fields: {', '.join(map(str, skipped_rows))}",
-                    )
-                if duplicate_emails:
-                    messages.warning(
-                        request,
-                        f"Skipped {len(duplicate_emails)} rows due to duplicate emails: {', '.join(duplicate_emails)}",
-                    )
-                if created_leads:
-                    messages.success(
-                        request, f"Successfully imported {created_leads} leads!"
-                    )
-                if not skipped_rows and not duplicate_emails and created_leads == 0:
-                    messages.info(request, "No leads were imported.")
-
-            except Exception:
-                messages.error(
-                    request, "Error processing file: file is not an Excel file"
+                messages.success(
+                    request,
+                    f"Successfully uploaded {created_leads} new leads. "
+                    f"Skipped rows: {len(skipped_rows)}. "
+                    f"Duplicate emails: {', '.join(duplicate_emails)}.",
                 )
+            except Exception as e:
+                messages.error(request, f"Error uploading leads: {str(e)}")
 
-        else:
-            messages.error(request, "Invalid file. Please upload a valid Excel file.")
-
-        # Always render the same page again with feedback messages
         return render(request, self.template_name, {"form": form})

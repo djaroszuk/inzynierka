@@ -1,5 +1,4 @@
 from django.db import models
-from clients.models import Client
 from datetime import datetime
 
 
@@ -9,7 +8,6 @@ class Product(models.Model):
     description = models.TextField(blank=True, null=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     stock_quantity = models.PositiveIntegerField(default=0)
-    clients = models.ManyToManyField(Client, related_name="products", blank=True)
 
     def save(self, *args, **kwargs):
         if self.pk:

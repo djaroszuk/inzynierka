@@ -21,7 +21,7 @@ from clients.models import Client, Contact
 
 # Forms
 from orders.forms import StatisticsFilterForm
-from .forms import AgentModelForm, EmailForm, AgentSearchForm
+from .forms import AgentModelForm, AgentSearchForm, OrganisorEmailForm, AgentEmailForm
 
 # Custom Mixins
 from .mixins import OrganisorAndLoginRequiredMixin
@@ -76,7 +76,13 @@ class AgentCreateView(OrganisorAndLoginRequiredMixin, generic.CreateView):
         Agent.objects.create(user=user)
         send_mail(
             subject="Account Created in Dominik Jaroszuk CRM",
-            message="Your account has been created. Thanks for joining our company!",
+            message=(
+                "Your account has been successfully created.\n\n"
+                "Thank you for joining our company!\n\n"
+                "To log in, please reset your password using the 'Forgot Password' form available on the login page.\n\n"
+                "Best regards,\n"
+                "Your Company Name"
+            ),
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[user.email],
         )
@@ -253,7 +259,7 @@ class AllAgentsStatsView(OrganisorAndLoginRequiredMixin, generic.TemplateView):
 # Send an email to a specific client or all clients
 class SendEmailView(LoginRequiredMixin, generic.FormView):
     template_name = "agents/send_email.html"
-    form_class = EmailForm
+    form_class = None
     success_url = reverse_lazy("agents:send-email")
 
     def get_initial(self):
@@ -277,6 +283,12 @@ class SendEmailView(LoginRequiredMixin, generic.FormView):
             context["prefilled_client_number"] = None
 
         return context
+
+    def get_form_class(self):
+        # Returns a form class dynamically based on user role
+        if self.request.user.is_organisor:
+            return OrganisorEmailForm
+        return AgentEmailForm
 
     def form_valid(self, form):
         # Sending emails form validation

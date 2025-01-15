@@ -104,9 +104,9 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
         return response
 
     def post(self, request, *args, **kwargs):
-        # Handles bulk cancellation of pending orders older than 48 hours
+        # Handles bulk cancellation of pending orders older than 72 hours
         if request.user.is_organisor and "delete_pending_orders" in request.POST:
-            cutoff_time = now() - timedelta(minutes=1)
+            cutoff_time = now() - timedelta(hours=72)
             pending_orders = Order.objects.filter(
                 status="Pending", date_created__lt=cutoff_time
             )
@@ -134,12 +134,12 @@ class OrderListView(LoginRequiredMixin, generic.ListView):
 
                 messages.success(
                     request,
-                    f"{count} pending orders older than 48 hours were canceled, stock restored, and clients notified.",
+                    f"{count} pending orders older than 72 hours were canceled, stock restored, and clients notified.",
                 )
             else:
                 messages.warning(
                     request,
-                    "No pending orders older than 48 hours were found to be canceled.",
+                    "No pending orders older than 72 hours were found to be canceled.",
                 )
 
         return redirect("orders:order-list")

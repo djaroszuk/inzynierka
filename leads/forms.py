@@ -4,10 +4,12 @@ from django.contrib.auth.forms import UserCreationForm, UsernameField
 from django.contrib.auth import get_user_model
 from django.db import OperationalError, ProgrammingError
 
+# Get the custom User model
 
 User = get_user_model()
 
 
+# Form to create or update Lead entries
 class LeadForm(forms.ModelForm):
     class Meta:
         model = Lead
@@ -21,13 +23,37 @@ class LeadForm(forms.ModelForm):
         )
 
 
+class LeadAgentForm(forms.ModelForm):
+    class Meta:
+        model = Lead
+        fields = (
+            "first_name",
+            "last_name",
+            "age",
+            "email",
+            "phone_number",
+        )
+
+
+# Custom form to handle user creation with email field
 class CustomUserCreationForm(UserCreationForm):
+    email = forms.EmailField(required=True)
+
     class Meta:
         model = User
-        fields = ("username",)
+        fields = ("username", "email")
         field_classes = {"username": UsernameField}
 
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.is_active = False
+        user.email = self.cleaned_data["email"]
+        if commit:
+            user.save()
+        return user
 
+
+# Form to update Lead category and conversion status
 class LeadCategoryUpdateForm(forms.ModelForm):
     class Meta:
         model = Lead
@@ -43,6 +69,7 @@ except (OperationalError, ProgrammingError):
     CATEGORY_CHOICES = []
 
 
+# Form for filtering leads by category
 class CategoryFilterForm(forms.Form):
     category = forms.ChoiceField(
         choices=[("", "------")] + CATEGORY_CHOICES,
@@ -50,6 +77,7 @@ class CategoryFilterForm(forms.Form):
     )
 
 
+# Form for uploading an Excel file
 class LeadUploadForm(forms.Form):
     file = forms.FileField(
         label="Upload Excel File",
@@ -57,6 +85,7 @@ class LeadUploadForm(forms.Form):
     )
 
 
+# Form to add comments to leads
 class LeadCommentForm(forms.ModelForm):
     class Meta:
         model = Lead

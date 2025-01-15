@@ -10,7 +10,7 @@
         <form method="post" action="" class="flex">
           {% csrf_token %}
           <button name="delete_pending_orders" type="submit" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
-            Delete Pending Orders
+            Cancel Pending Orders
           </button>
         </form>
         <form method="get" action="" class="flex">
@@ -66,7 +66,7 @@
               <td class="px-4 py-3">{{ order.client }}</td>
               <td class="px-4 py-3">{{ order.client.client_number }}</td>
               <td class="px-4 py-3">{{ order.date_created|date:"d-m-Y H:i" }}</td>
-              <td class="px-4 py-3 text-lg text-gray-900">{{ order.total_price }}</td>
+              <td class="px-4 py-3 text-lg text-gray-900">{{ order.total_price }}$</td>
               <td class="px-4 py-3">{{ order.status }}</td>
             </tr>
             {% endfor %}

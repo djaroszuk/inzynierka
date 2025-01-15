@@ -3,10 +3,10 @@ from datetime import timedelta
 import json
 
 # Django Core Imports
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import Q
+
 from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -36,7 +36,13 @@ class ClientListView(LoginRequiredMixin, generic.ListView):
 
         query = self.request.GET.get("q")
         if query:
-            queryset = queryset.filter(Q(client_number__icontains=query))
+            try:
+                query = int(
+                    query
+                )  # Match exact client number if the query is an integer
+                queryset = queryset.filter(client_number=query)
+            except ValueError:
+                queryset = queryset.none()  # Ignore non-integer queries
 
         if self.request.GET.get("important"):
             queryset = queryset.filter(status="Important")
@@ -92,7 +98,6 @@ class ClientUpdateView(LoginRequiredMixin, generic.UpdateView):
     model = Client
     form_class = None
     template_name = "clients/client_update.html"
-    success_url = reverse_lazy("clients:client-list")
 
     def get_object(self):
         # Fetches the client using client_number
@@ -105,16 +110,18 @@ class ClientUpdateView(LoginRequiredMixin, generic.UpdateView):
             return OrganisorClientForm
         return ClientForm
 
+    def get_success_url(self):
+        # Redirect to the client detail view after successful update
+        return reverse_lazy(
+            "clients:client-detail", kwargs={"client_number": self.object.client_number}
+        )
+
 
 # Handles client deletion with permission checks
-class ClientDeleteView(LoginRequiredMixin, UserPassesTestMixin, generic.DeleteView):
+class ClientDeleteView(LoginRequiredMixin, generic.DeleteView):
     model = Client
     template_name = "clients/client_delete.html"
     success_url = reverse_lazy("clients:client-list")
-
-    def test_func(self):
-        # Checks if the user is an organisor
-        return self.request.user.is_organisor
 
     def get_object(self):
         # Fetches the client using client_number

@@ -157,5 +157,5 @@ CRISPY_TEMPLATE_PACK = "tailwind"
 EMAIL_HOST = "smtp.gmail.com"  # or another SMTP server
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "uchodzcaa@gmail.com"
-EMAIL_HOST_PASSWORD = "jehhepubnjuyivqa"
+EMAIL_HOST_USER = "example"
+EMAIL_HOST_PASSWORD = "example"
